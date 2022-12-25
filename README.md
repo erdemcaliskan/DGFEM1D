@@ -2,12 +2,25 @@
 
 One dimensional DG and FEM solver
 
-## Dependencies
+## Prerequisites
 
-`cmake, Eigen`
-
+* cmake
+  ```sh
+  sudo apt install cmake
+  ```
+* Eigen
+  [Eigen](https://gitlab.com/libeigen/eigen)
+  
 ## Installation
 
-`mkdir build && cd build`
-`cmake ../.`
-`cmake --build .`
+1. Clone the repo
+   ```sh
+   git clone hhttps://github.com/erdemcaliskan/DGFEM1D.git
+   ```
+   
+2. Build the project
+    ```sh
+    mkdir build && cd build
+    cmake ../.
+    cmake --build .
+    ```
