@@ -6,8 +6,7 @@
 // return is numSpatialPointsPerSegment
 // points are between 0 and 1
 
-int SetNewtonCotes_Points_AndWeights(int numSpatialSubsegmentsPerSegment,
-                                     vector<double> &spatialIntegrationWeights,
+int SetNewtonCotes_Points_AndWeights(int numSpatialSubsegmentsPerSegment, vector<double> &spatialIntegrationWeights,
                                      vector<double> &spatialIntegrationPoints);
 
 double computeRatio(double numerator, double denominator);

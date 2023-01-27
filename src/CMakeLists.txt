@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.10) 
+
 project(solver VERSION 1.0)
 
 include(CTest) 
-include(CPack)
+include(CPack) 
 enable_testing()
 
 aux_source_directory(util DIR_UTIL_SRCS)

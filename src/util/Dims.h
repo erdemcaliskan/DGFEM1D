@@ -43,10 +43,10 @@ using namespace std;
 #define MIN(a, b) ((a) > (b) ? b : a)
 
 #ifndef EXIT
-#define EXIT                                                                   \
-  exit(1);                                                                     \
-  getchar();                                                                   \
-  getchar();
+#define EXIT                                                                                                           \
+    exit(1);                                                                                                           \
+    getchar();                                                                                                         \
+    getchar();
 #endif
 
 // to exit the code with useful information when something is wrong. It provides
@@ -54,17 +54,17 @@ using namespace std;
 //					if (denominator == 0) THROW("cannot
 // divide be zero!\n");
 #ifndef THROW
-#define THROW(msg)                                                             \
-  {                                                                            \
-    {                                                                          \
-      char tmpstr[255];                                                        \
-      sprintf(tmpstr, "In %s, line %d : %s \n", __FILE__, __LINE__, msg);      \
-      cerr << tmpstr;                                                          \
-      getchar();                                                               \
-      getchar();                                                               \
-      throw(tmpstr);                                                           \
-    }                                                                          \
-  }
+#define THROW(msg)                                                                                                     \
+    {                                                                                                                  \
+        {                                                                                                              \
+            char tmpstr[255];                                                                                          \
+            sprintf(tmpstr, "In %s, line %d : %s \n", __FILE__, __LINE__, msg);                                        \
+            cerr << tmpstr;                                                                                            \
+            getchar();                                                                                                 \
+            getchar();                                                                                                 \
+            throw(tmpstr);                                                                                             \
+        }                                                                                                              \
+    }
 #endif
 
 #ifndef PI

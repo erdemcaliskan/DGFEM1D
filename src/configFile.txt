@@ -1,0 +1,10 @@
+{
+# polynomidal orer for elements
+polyOrder 
+1
+
+lumpMass 
+0
+
+
+}
