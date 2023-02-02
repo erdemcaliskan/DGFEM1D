@@ -1,4 +1,3 @@
-
 #ifndef CONFIGURATION__H
 #define CONFIGURATION__H
 

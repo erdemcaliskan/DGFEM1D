@@ -1,7 +1,7 @@
 #ifndef ONE_DIMENSIONAL_ELEMENT__H
 #define ONE_DIMENSIONAL_ELEMENT__H
 
-#include "LAFuncs.h"
+#include "LAfuncs.h"
 #include "globalTypesClasses.h"
 
 // this is the parent element from xi = -1 to 1 and no real geometry or material properties are considered here

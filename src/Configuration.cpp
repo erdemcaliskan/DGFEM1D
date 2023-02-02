@@ -1,5 +1,5 @@
 #include "Configuration.h"
-#include "commonMacros.h"
+#include "util/commonMacros.h"
 
 Configuration::Configuration()
 {
@@ -375,8 +375,15 @@ void Configuration::Read_ElementGeometryProperties()
     {
         double hE = (xM - xm) / num_elements;
         elements.resize(num_elements);
-        //		for (unsigned int ei = 0; ei < num_elements; ++ei)
-        // elements[ei].elementProps. ...
+        	for (unsigned int ei = 0; ei < num_elements; ++ei)
+            {
+                elements[ei].elementProps.hE = hE;
+                elements[ei].elementProps.xm = xm;
+                elements[ei].elementProps.xM = xM;
+                elements[ei].elementProps.E  = E_uniform;
+                elements[ei].elementProps.rho = rho_uniform;
+                elements[ei].elementProps.damping = damping_uniform;
+            }
         // use these values to form elements
         // 	  num_elements, xm, xM, E_uniform, rho_uniform, damping_uniform
     }
