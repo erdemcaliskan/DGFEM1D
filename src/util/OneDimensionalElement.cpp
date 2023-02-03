@@ -123,6 +123,7 @@ double OneDimensionalElement::x_2xi(double x, double xLeft) const
     // x = N0Linear(xi) xL + N1Linear(xi) XR = (1 - xi)/2 xL + (1 + xi/2) xR = (1 - xi)/2 (xL) + (1 + xi/s)(xL + he) =
     // xL + (1 + xi)/2 * he
     double xi = 2.0 * (x - xLeft) / elementProps.hE - 1.0;
+    return xi;
 }
 
 void OneDimensionalElement::CalculateB(const OneDimensionalParentElement &parent, double x, double xLeft,

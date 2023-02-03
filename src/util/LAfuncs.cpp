@@ -1,4 +1,4 @@
-#include "LAFuncs.h"
+#include "LAfuncs.h"
 #include "Dims.h"
 #include <assert.h> /* assert */
 #include <math.h>   /* fabs */

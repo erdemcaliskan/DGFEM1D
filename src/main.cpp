@@ -1,4 +1,4 @@
-#include "Configuration.h"
+#include "util/Configuration.h"
 #include "util/globalMacros.h"
 
 #include <Eigen/Dense>
@@ -9,6 +9,11 @@ int main(int, char **)
 {
     std::cout << "Hello, world!\n";
     setGlobalMembers();
+
+    string configName = "";
+    Configuration conf;
+    conf.Main_SolveDomain(configName);
+    return 0;
 
     // Example
     Eigen::MatrixXcd m(2, 2); // MatrixXcd typedef Matrix< std::complex< double >,

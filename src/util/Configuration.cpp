@@ -1,23 +1,29 @@
 #include "Configuration.h"
-#include "util/commonMacros.h"
+#include "commonMacros.h"
+#include "float.h"
 
 Configuration::Configuration()
 {
-    wf_type = DG_2FUV;
+    wf_type = cfem_1D; // cfem_1D DG_2FUV DG_1F_vStar;
     sOption = so_Riemann;
     dg_eps = dg_eps_p1;
     etaI = 1.0;
     etaB = 1.0;
-    num_elements = -1;
+    num_elements = 5;
     xm = -0.5;
     xM = 0.5;
     E_uniform = 1.0;
     rho_uniform = 1.0;
     damping_uniform = 0.0;
+    polyOrder = 1;
+    leftBC = bct_Neumann;
+    rightBC = bct_Neumann;
+    outputFileNameWOExt = "output";
+    lumpMass = false;
     Initialize_Configuration();
 }
 
-void Configuration::Main_SolveDomain(string configName)
+void Configuration::Main_SolveDomain(string &configName)
 {
     Read_ConfigFile(configName);
     Initialize_Configuration();
@@ -185,7 +191,7 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
     //		for 1Fv* this will be interfaceC
     //		for other formulations 1Fu* and 2D this will be interfaceK
     interfaceK.resize(size_interfaceMatrices, size_interfaceMatrices);
-    MATRIX *matrix4wSlnField;
+    DCMATRIX *matrix4wSlnField;
     matrix4wSlnField = &interfaceK;
     bool hasC = false;
 
@@ -284,7 +290,7 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
     //
     //! B: epsilon (beta) sigmaHat.n (w* - w) [w = v for 2F, 1Fv, = u for 1Fu] -> beta = timeScale only for 1Fu*
     if (dg_eps == dg_eps_0)
-        return;
+        return hasC;
     for (unsigned int i = 0; i < ndof_parent_element; ++i) // vHat of left element
     {
         /////////////////////////////// sigmaHat from the left element
@@ -366,6 +372,8 @@ bool Configuration::HasNonZeroDampingMatrix() const
         }
         return false;
     }
+    cout << "wf_type\t" << wf_type << '\n';
+    THROW("wf_type case not implemented\n");
 }
 
 void Configuration::Read_ElementGeometryProperties()
@@ -378,8 +386,6 @@ void Configuration::Read_ElementGeometryProperties()
         	for (unsigned int ei = 0; ei < num_elements; ++ei)
             {
                 elements[ei].elementProps.hE = hE;
-                elements[ei].elementProps.xm = xm;
-                elements[ei].elementProps.xM = xM;
                 elements[ei].elementProps.E  = E_uniform;
                 elements[ei].elementProps.rho = rho_uniform;
                 elements[ei].elementProps.damping = damping_uniform;
@@ -391,7 +397,6 @@ void Configuration::Read_ElementGeometryProperties()
     {
         // have a file name in config and read elements from there (Ali and Reza TODO)
     }
-    THROW("function not implemented\n");
 }
 
 void Configuration::Form_ElementMatrices()
@@ -450,7 +455,7 @@ void Configuration::Form_ElementMatrices()
         npdof_domain = cntr_p;
         nfdof_domain = ndof_domain - npdof_domain;
 
-        unsigned int en = nfdof_domain - 2 + (int)hasPeriodicBC;
+        unsigned int en = ndof_domain - 2 + (int)hasPeriodicBC;
         // all of these are free
         for (unsigned int nodei = 1; nodei <= en; ++nodei)
             nodedof_map[nodei] = cntr_f++;
@@ -474,13 +479,17 @@ void Configuration::Form_ElementMatrices()
         /// B. Element dof maps
         unsigned int st;
         edof_2_globalDofMap.resize(num_elements);
+        int ndof_elementm1 = (ndof_element - 1); // number of "unshared" dofs per element
         for (unsigned int ei = 0; ei < num_elements; ++ei)
         {
-            st = ei * ndof_element;
+            st = ei * ndof_elementm1; 
             vector<int> *e_dofMap = &edof_2_globalDofMap[ei];
             e_dofMap->resize(ndof_element);
-            for (unsigned int j = 0; j < ndof_element; ++j)
-                (*e_dofMap)[j] = nodedof_map[st + j];
+            (*e_dofMap)[0] = nodedof_map[st]; // left node
+            (*e_dofMap)[1] = nodedof_map[st + ndof_element - 1]; // left node
+ 
+            for (unsigned int j = 2; j < ndof_element; ++j)
+                (*e_dofMap)[j] = nodedof_map[st + j - 1];
         }
     }
 
@@ -495,16 +504,17 @@ void Configuration::Form_ElementMatrices()
         // property
         MATRIX meBuildingBlock, keBuildingBlock;
         double Jacobian = 0.5 * ePtr->elementProps.hE;
-        keBuildingBlock.Multiply(parentElement.kpe, Jacobian);
-        meBuildingBlock.Multiply(parentElement.kpe, Jacobian);
+        double JacobianInv = 1.0 / Jacobian; 
+        keBuildingBlock.Multiply(parentElement.kpe, JacobianInv);
+        meBuildingBlock.Multiply(parentElement.mpe, Jacobian);
 
-        ePtr->ke.resize(ndof_element);
+        ePtr->ke.resize(ndof_element, ndof_element);
         ePtr->ke = 0.0;
-        ePtr->me.resize(ndof_element);
+        ePtr->me.resize(ndof_element, ndof_element);
         ePtr->me = 0.0;
         if (b_hasNonZeroDampingMatrix)
         {
-            ePtr->ce.resize(ndof_element);
+            ePtr->ce.resize(ndof_element, ndof_element);
             ePtr->ce = 0.0;
         }
 
@@ -512,7 +522,7 @@ void Configuration::Form_ElementMatrices()
         {
             double alpha = 1.0 / ePtr->elementProps.time_e;
             alpha *= alpha;
-            for (unsigned int i = 0; i < parentElement.ndof; i)
+            for (unsigned int i = 0; i < parentElement.ndof; ++i)
             {
                 for (unsigned int j = 0; j < parentElement.ndof; ++j)
                 {
@@ -536,7 +546,7 @@ void Configuration::Form_ElementMatrices()
         }
         else // if ((wf_type == DG_1F_vStar) || (wf_type == DG_1F_uStar) || (wf_type == cfem_1D))
         {
-            for (unsigned int i = 0; i < parentElement.ndof; i)
+            for (unsigned int i = 0; i < parentElement.ndof; ++i)
             {
                 for (unsigned int j = 0; j < parentElement.ndof; ++j)
                 {
@@ -554,24 +564,23 @@ void Configuration::Form_ElementMatrices()
                 }
             }
         }
-        THROW("Need to assemble ePtr->ke, ePtr->me (and if needed ePtr->ce) to global system\n")
     }
 }
 
 void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 {
     globalK.resize(nfdof_domain, nfdof_domain);
-    globalK = 0.0;
+    globalK.setConstant(0.0);
 
     if (assembleMassIn)
     {
         globalM.resize(nfdof_domain, nfdof_domain);
-        globalM = 0.0;
+        globalM.setConstant(0.0);
     }
     if (b_hasNonZeroDampingMatrix)
     {
         globalC.resize(nfdof_domain, nfdof_domain);
-        globalC = 0.0;
+        globalC.setConstant(0.0);
     }
 
     /// Step A:  Interior of the elments
@@ -618,7 +627,7 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
     // n: number of elements -> n + 1 interfaces
     // I0 eInterior0 I1 eInterior1 ... I(n-1) eInterior(n-1) In
     // interior interfaces are from 1 to n -1
-    unsigned int st = 1;
+    st = 1;
     unsigned int en = num_elements - 1;
     if (doesHaveBlochOrPeriodicBC)
         st = 0;
@@ -708,17 +717,17 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 void Configuration::AssembleGlobalMatrices_CFEM(bool assembleMassIn)
 {
     globalK.resize(nfdof_domain, nfdof_domain);
-    globalK = 0.0;
+    globalK.setConstant(0.0);
 
     if (assembleMassIn)
     {
         globalM.resize(nfdof_domain, nfdof_domain);
-        globalM = 0.0;
+    globalK.setConstant(0.0);
     }
     if (b_hasNonZeroDampingMatrix)
     {
         globalC.resize(nfdof_domain, nfdof_domain);
-        globalC = 0.0;
+    globalK.setConstant(0.0);
     }
 
     unsigned int I, J; // I, J are global matrix rows and columns
@@ -778,6 +787,8 @@ void Configuration::AssembleGlobalMatrices_CFEM(bool assembleMassIn)
 
 void Configuration::Read_ConfigFile(string configName)
 {
+    if (configName == "")
+        return;
     string buf;
     fstream in(configName.c_str(), ios::in);
     if (in.is_open())
@@ -806,6 +817,10 @@ void Configuration::Read_ConfigFile(string configName)
         {
             READ_NBOOL(in, buf, lumpMass);
         }
+        else if (buf == "outputFileNameWOExt")
+        {
+            READ_NSTRING(in, buf, outputFileNameWOExt);
+        }
         else
         {
             cout << "buf:\t" << buf << '\n';
@@ -817,5 +832,15 @@ void Configuration::Read_ConfigFile(string configName)
 
 void Configuration::Process_Output_GlobalMatrices()
 {
-    THROW("Not implemented yet\n");
+    string filename = outputFileNameWOExt + ".txt";
+    fstream out(filename.c_str(), ios::out);
+    out << "wf_type\t" << wf_type << '\n';
+    out << "ndof_domain\t" << ndof_domain << '\n';
+    out << "K\n" << globalK << '\n';
+    out << "K.sum\n" << globalK.sum() << '\n';
+    out << "M\n" << globalM << '\n';
+    out << "M.sum\n" << globalM.sum() << '\n';
+    out << "b_hasNonZeroDampingMatrix\n" << b_hasNonZeroDampingMatrix << '\n';
+    out << "C\n" << globalC << '\n';
+    out << "C.sum\n" << globalC.sum() << '\n';
 }

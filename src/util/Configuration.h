@@ -1,9 +1,9 @@
 #ifndef CONFIGURATION__H
 #define CONFIGURATION__H
 
-#include "util/OneDimensionalElement.h"
-#include "util/globalMacros.h"
-#include "util/globalTypesClasses.h"
+#include "OneDimensionalElement.h"
+#include "globalMacros.h"
+#include "globalTypesClasses.h"
 
 // weights of the star values for one side of the interface
 // f_ -> factor of
@@ -31,9 +31,10 @@ class Configuration
 {
   public:
     Configuration();
-    void Main_SolveDomain(string configName);
+    void Main_SolveDomain(string &configName);
 
     // inputs
+    string outputFileNameWOExt;
     unsigned int polyOrder;
     // whether we want the mass-lumpting option or not
     bool lumpMass;
@@ -69,7 +70,7 @@ class Configuration
     // we read / have already initialized [he, E, rho, damping] of elements[i].elementProps for each element and
     // calculate Z, c, etc. from this
     vector<OneDimensionalElement> elements; // for uniform case; elements.resize(num_elements)
-    unsigned int num_elements;
+    int num_elements;
     double xm, xM, E_uniform, rho_uniform, damping_uniform; // hE = (xM - xm)/num_elements
     ////////////////////////////////////////////
     // Computed
