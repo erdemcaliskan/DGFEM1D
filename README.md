@@ -15,7 +15,7 @@ One dimensional DG and FEM solver
 
 1. Clone the repo
    ```sh
-   git clone hhttps://github.com/erdemcaliskan/DGFEM1D.git
+   git clone git@github.com:erdemcaliskan/DGFEM1D.git
    ```
    
 2. Build the project
