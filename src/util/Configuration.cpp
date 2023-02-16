@@ -4,7 +4,7 @@
 
 Configuration::Configuration()
 {
-    wf_type = cfem_1D; // cfem_1D DG_2FUV DG_1F_vStar;
+    wf_type = DG_1F_vStar; // cfem_1D DG_2FUV DG_1F_vStar;
     sOption = so_Riemann;
     dg_eps = dg_eps_p1;
     etaI = 1.0;
@@ -62,7 +62,7 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
     {
         double Zl = left_ep.Z, Zr = right_ep.Z;
         double ZlpZr_inv = 1.0 / (Zl + Zr);
-        double Zl_div_ZlpZr = Zl * Zl_div_ZlpZr, Zr_div_ZlpZr = Zr * Zl_div_ZlpZr;
+        double Zl_div_ZlpZr = Zl * ZlpZr_inv, Zr_div_ZlpZr = Zr * ZlpZr_inv;
 
         // sigma* weights
         shared_sigmaStar_wStarWeights.ss_f_sigmaL = Zl_div_ZlpZr;
