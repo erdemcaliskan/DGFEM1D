@@ -12,7 +12,7 @@
 #include <string>
 
 #define USE_DEALII 0
-#define USE_DEALII_VECMATIO 1
+#define USE_DEALII_VECMATIO 0	//1
 
 using namespace std;
 

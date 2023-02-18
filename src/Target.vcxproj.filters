@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{9428c0d0-abf6-4469-98a6-fa7089505a78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{abc7bcae-8305-4e9f-b984-f38494f5d697}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Configuration.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\globalFunctions.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\globalMacros.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\globalTypesClasses.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\LAfuncs.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\LAfuncsFinalStep.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\LAfuncsFixed.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\OneDimensionalElement.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\RandomVariable.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\InhomogeousField.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util\LayeredProperties.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="util\commonMacros.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Configuration.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Dims.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\FileIOMacros.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\globalFunctions.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\globalMacros.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\globalTypesClasses.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\LAfuncs.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\LAfuncsFinalStep.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\LAfuncsFixed.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\OneDimensionalElement.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\RandomVariable.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\InhomogeousField.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="util\LayeredProperties.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

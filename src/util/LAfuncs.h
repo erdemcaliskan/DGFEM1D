@@ -1,10 +1,19 @@
 #ifndef LA_FUNCS__H
 #define LA_FUNCS__H
 
-#include <Eigen/Dense>
+#include "globalMacros.h"
 #include <iostream>
 
+class MATRIX;
+#if USE_COMPLEX
+#include <Eigen/Dense>
 typedef Eigen::MatrixXcd DCMATRIX;
+#define ZEROMAT(x)     x.setConstant(0.0)
+#else
+typedef MATRIX DCMATRIX;
+#define ZEROMAT(x)     x = 0.0
+#endif
+
 
 using namespace std;
 
@@ -116,6 +125,11 @@ class MATRIX
     unsigned int columns() const;
     vector<double> &operator[](unsigned int i);
     const vector<double> &operator[](unsigned int i) const;
+
+	double& operator()(unsigned int i, unsigned int j);
+	double operator()(unsigned int i, unsigned int j) const;
+	double sum() const;
+
     //	double& operator()(unsigned int i, unsigned int j);
     //	double operator()(unsigned int i, unsigned int j) const;
     MATRIX &operator=(double val);

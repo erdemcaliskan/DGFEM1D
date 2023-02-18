@@ -4,9 +4,13 @@
 
 Configuration::Configuration()
 {
-    wf_type = DG_1F_vStar; // cfem_1D DG_2FUV DG_1F_vStar;
+    wf_type = DG_1F_vStar; // cfem DG_2FUV DG_1F_vStar;
     sOption = so_Riemann;
     dg_eps = dg_eps_p1;
+	isBlochModeAnalysis = false;
+	isHelmholtz = false;
+	omega = 1.0;
+
     etaI = 1.0;
     etaB = 1.0;
     num_elements = 5;
@@ -20,11 +24,24 @@ Configuration::Configuration()
     rightBC = bct_Neumann;
     outputFileNameWOExt = "output";
     lumpMass = false;
-    Initialize_Configuration();
+
+	isPeriodic = false;
+	serialNumber = 0;
+	mPropt = mpt_uniform;
+	resolutionFactor = 0;
+	sso_E = sso_mean_harmonic;
+	sso_rho = sso_mean_arithmetic;
 }
 
-void Configuration::Main_SolveDomain(string &configName)
+void Configuration::Main_SolveDomain(const string &configName, int serialNumberIn)
 {
+	serialNumber = serialNumberIn;
+	serialNumber_str = "";
+	if (serialNumber >= 0)
+	{
+		toString(serialNumber, serialNumber_str);
+		serialNumber_str = "_" + serialNumber_str;
+	}
     Read_ConfigFile(configName);
     Initialize_Configuration();
     Read_ElementGeometryProperties();
@@ -40,7 +57,7 @@ void Configuration::Main_SolveDomain(string &configName)
 
 void Configuration::Initialize_Configuration()
 {
-    isDG = (wf_type != cfem_1D);
+    isDG = (wf_type != cfem);
     weight_BLM_is_velocity = (wf_type == DG_2FUV);
     num_fields = 1;
     field_pos_weight_BLM = 0;
@@ -133,6 +150,7 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
     }
 
     /// if w is u (Helmholtz), we need to use i omega to adjust the weights
+#if USE_COMPLEX
     if (isHelmholtz)
     {
         Dcomplex iomega = omega * Icomp, iomega_inv = 1.0 / iomega;
@@ -144,6 +162,7 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
         shared_sigmaStar_wStarWeights.ws_f_sigmaL *= iomega_inv;
         shared_sigmaStar_wStarWeights.ws_f_sigmaR *= iomega_inv;
     }
+#endif
     twoSideWeights.side_weights[SDL] = shared_sigmaStar_wStarWeights;
     twoSideWeights.side_weights[SDR] = shared_sigmaStar_wStarWeights;
     // need to multiply sigma*n parts of the right by -1, since for the right side
@@ -157,6 +176,7 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
         return;
 
     // deal with Bloch mode analysis where gamma is involved
+#if USE_COMPLEX
     twoSideWeights.side_weights[SDL].ss_f_sigmaR *= gamma;
     twoSideWeights.side_weights[SDL].ss_f_wR *= gamma;
     twoSideWeights.side_weights[SDL].ws_f_sigmaR *= gamma;
@@ -166,6 +186,7 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
     twoSideWeights.side_weights[SDR].ss_f_wL *= gamma_inv;
     twoSideWeights.side_weights[SDR].ws_f_sigmaL *= gamma_inv;
     twoSideWeights.side_weights[SDR].ws_f_wL *= gamma_inv;
+#endif
 }
 
 bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const OneDimensionalElement &left_e,
@@ -362,7 +383,7 @@ bool Configuration::HasNonZeroDampingMatrix() const
         return true;
 
     static double tol_4_damping = 1000 * DBL_MIN;
-    if ((wf_type == cfem_1D) || (wf_type == DG_1F_uStar))
+    if ((wf_type == cfem) || (wf_type == DG_1F_uStar))
     {
         // depends on the material damping
         for (unsigned int ei = 0; ei < num_elements; ++ei)
@@ -379,24 +400,79 @@ bool Configuration::HasNonZeroDampingMatrix() const
 void Configuration::Read_ElementGeometryProperties()
 {
     // for simple case only needed
-    if (num_elements > 0)
+    if (mPropt == mpt_uniform)
     {
-        double hE = (xM - xm) / num_elements;
+		if (num_elements <= 0)
+		{
+			THROW("(num_elements <= 0)\n");
+		}
+		domain_length = (xM - xm);
+        double hE = domain_length / num_elements;
         elements.resize(num_elements);
-        	for (unsigned int ei = 0; ei < num_elements; ++ei)
-            {
-                elements[ei].elementProps.hE = hE;
-                elements[ei].elementProps.E  = E_uniform;
-                elements[ei].elementProps.rho = rho_uniform;
-                elements[ei].elementProps.damping = damping_uniform;
-            }
-        // use these values to form elements
-        // 	  num_elements, xm, xM, E_uniform, rho_uniform, damping_uniform
+        for (unsigned int ei = 0; ei < num_elements; ++ei)
+        {
+            elements[ei].elementProps.hE = hE;
+            elements[ei].elementProps.E  = E_uniform;
+            elements[ei].elementProps.rho = rho_uniform;
+            elements[ei].elementProps.damping = damping_uniform;
+        }
     }
-    else
+    else if (mPropt == mpt_random_field)
     {
-        // have a file name in config and read elements from there (Ali and Reza TODO)
+		bool hasRandom_E = !randomField_E.IsEmpty(), hasRandom_rho = !randomField_rho.IsEmpty();
+		vector<double> xs;
+		if (hasRandom_E)
+		{
+			num_elements = randomField_E.getNumSegments();
+			randomField_E.get_xs(xs);
+		}
+		else if (hasRandom_rho)
+		{
+			num_elements = randomField_rho.getNumSegments();
+			randomField_rho.get_xs(xs);
+		}
+		else
+		{
+			THROW("Neither E or rho is read from a field and cannot set the domain properties for (mPropt == mpt_random_field)\n");
+		}
+		elements.resize(num_elements);
+		bool has_r_E = ((hasRandom_E) && (sso_E != sso_none));
+		bool has_r_rho = ((hasRandom_rho) && (sso_rho != sso_none));
+		for (unsigned int ei = 0; ei < num_elements; ++ei)
+		{
+			elements[ei].elementProps.hE = xs[ei + 1] - xs[ei];
+			if (has_r_E)
+				elements[ei].elementProps.E = randomField_E.getSegmentValueByIndex(ei);
+			else
+				elements[ei].elementProps.E = E_uniform;
+
+			if (has_r_rho)
+				elements[ei].elementProps.rho = randomField_rho.getSegmentValueByIndex(ei);
+			else
+				elements[ei].elementProps.rho = rho_uniform;
+
+			elements[ei].elementProps.damping = damping_uniform;
+		}
     }
+	else if (mPropt == mpt_layered)
+	{
+		num_elements = layered_properties.sz_allsequences;
+		elements.resize(num_elements);
+		for (unsigned int ei = 0; ei < num_elements; ++ei)
+		{
+			oneBulk_Elastic_Prop* bepPtr = &layered_properties.finalBulkSegments[ei];
+			elements[ei].elementProps.hE = bepPtr->getLength();
+			elements[ei].elementProps.E = bepPtr->E;
+			elements[ei].elementProps.rho = bepPtr->rho;
+			elements[ei].elementProps.damping = bepPtr->damping;
+		}
+	}
+	else
+	{
+		cout << "mPropt\t" << mPropt << '\n';
+		THROW("Invalid mPropt\n");
+	}
+	domain_length = xM - xm;
 }
 
 void Configuration::Form_ElementMatrices()
@@ -412,7 +488,7 @@ void Configuration::Form_ElementMatrices()
 
     edof_2_globalDofMap.clear();
 
-    if (wf_type != cfem_1D)
+    if (wf_type != cfem)
     {
         nfdof_domain = ndof_element * num_elements;
         ndof_domain = nfdof_domain;
@@ -544,7 +620,7 @@ void Configuration::Form_ElementMatrices()
                 }
             }
         }
-        else // if ((wf_type == DG_1F_vStar) || (wf_type == DG_1F_uStar) || (wf_type == cfem_1D))
+        else // if ((wf_type == DG_1F_vStar) || (wf_type == DG_1F_uStar) || (wf_type == cfem))
         {
             for (unsigned int i = 0; i < parentElement.ndof; ++i)
             {
@@ -570,17 +646,17 @@ void Configuration::Form_ElementMatrices()
 void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 {
     globalK.resize(nfdof_domain, nfdof_domain);
-    globalK.setConstant(0.0);
+	ZEROMAT(globalK);
 
-    if (assembleMassIn)
+	if (assembleMassIn)
     {
         globalM.resize(nfdof_domain, nfdof_domain);
-        globalM.setConstant(0.0);
+		ZEROMAT(globalM);
     }
     if (b_hasNonZeroDampingMatrix)
     {
         globalC.resize(nfdof_domain, nfdof_domain);
-        globalC.setConstant(0.0);
+		ZEROMAT(globalC);
     }
 
     /// Step A:  Interior of the elments
@@ -717,17 +793,17 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 void Configuration::AssembleGlobalMatrices_CFEM(bool assembleMassIn)
 {
     globalK.resize(nfdof_domain, nfdof_domain);
-    globalK.setConstant(0.0);
+	ZEROMAT(globalK);
 
     if (assembleMassIn)
     {
         globalM.resize(nfdof_domain, nfdof_domain);
-    globalK.setConstant(0.0);
+		ZEROMAT(globalM);
     }
     if (b_hasNonZeroDampingMatrix)
     {
         globalC.resize(nfdof_domain, nfdof_domain);
-    globalK.setConstant(0.0);
+		ZEROMAT(globalC);
     }
 
     unsigned int I, J; // I, J are global matrix rows and columns
@@ -785,13 +861,13 @@ void Configuration::AssembleGlobalMatrices_CFEM(bool assembleMassIn)
     }
 }
 
-void Configuration::Read_ConfigFile(string configName)
+void Configuration::Read_ConfigFile(const string& configName)
 {
     if (configName == "")
         return;
     string buf;
     fstream in(configName.c_str(), ios::in);
-    if (in.is_open())
+    if (!in.is_open())
     {
         cout << "configName\t" << configName << '\n';
         THROW("cannot open config file\n");
@@ -817,10 +893,126 @@ void Configuration::Read_ConfigFile(string configName)
         {
             READ_NBOOL(in, buf, lumpMass);
         }
-        else if (buf == "outputFileNameWOExt")
+		else if (buf == "wf_type")
+		{
+			in >> wf_type;
+		}
+		else if (buf == "isBlochModeAnalysis")
+		{
+			READ_NBOOL(in, buf, isBlochModeAnalysis);
+		}
+		else if (buf == "isHelmholtz")
+		{
+			READ_NBOOL(in, buf, isHelmholtz);
+		}
+		else if (buf == "omega")
+		{
+			READ_NDOUBLE(in, buf, omega);
+		}
+		else if (buf == "sOption")
+		{
+			in >> sOption;
+		}
+		else if (buf == "dg_eps")
+		{
+			int tmpi;
+			READ_NINTEGER(in, buf, tmpi);
+			dg_eps = DG_epsilonT(tmpi);
+		}
+		else if (buf == "etaI")
+		{
+			READ_NDOUBLE(in, buf, etaI);
+		}
+		else if (buf == "etaB")
+		{
+			READ_NDOUBLE(in, buf, etaB);
+		}
+		else if (buf == "leftBC")
+		{
+			in >> leftBC;
+		}
+		else if (buf == "rightBC")
+		{
+			in >> rightBC;
+		}
+		else if (buf == "outputFileNameWOExt")
         {
             READ_NSTRING(in, buf, outputFileNameWOExt);
         }
+		else if (buf == "mPropt")
+		{
+			in >> mPropt;
+		}
+		else if (buf == "num_elements")
+		{
+			READ_NINTEGER(in, buf, num_elements);
+		}
+		else if (buf == "xm")
+		{
+			READ_NDOUBLE(in, buf, xm);
+		}
+		else if (buf == "xM")
+		{
+			READ_NDOUBLE(in, buf, xM);
+		}
+		else if (buf == "E_uniform")
+		{
+			READ_NDOUBLE(in, buf, E_uniform);
+		}
+		else if (buf == "rho_uniform")
+		{
+			READ_NDOUBLE(in, buf, rho_uniform);
+		}
+		else if (buf == "damping_uniform")
+		{
+			READ_NDOUBLE(in, buf, damping_uniform);
+		}
+		else if (buf == "resolutionFactor")
+		{
+			READ_NINTEGER(in, buf, resolutionFactor);
+		}
+		else if (buf == "sso_E")
+		{
+			in >> sso_E;
+		}
+		else if (buf == "sso_rho")
+		{
+			in >> sso_rho;
+		}
+		else if (buf == "sso_rho")
+		{
+			in >> sso_rho;
+		}
+		else if (buf == "randomField_E")
+		{
+			string baseName_WOExt;
+			READ_NSTRING(in, buf, baseName_WOExt);
+			string dataFileName = baseName_WOExt + serialNumber_str + ".txt";
+			fstream inData(dataFileName.c_str(), ios::in);
+			if (!inData.is_open())
+			{
+				cout << "dataFileName\t" << dataFileName << '\n';
+				THROW("Cannot open file\n");
+			}
+			randomField_E.Read_Initialize_OneIHField(inData, &in, &isPeriodic, &xM, &xm, resolutionFactor, sso_E);
+		}
+		else if (buf == "randomField_rho")
+		{
+			string baseName_WOExt;
+			READ_NSTRING(in, buf, baseName_WOExt);
+			string dataFileName = baseName_WOExt + serialNumber_str + ".txt";
+			fstream inData(dataFileName.c_str(), ios::in);
+			if (!inData.is_open())
+			{
+				cout << "dataFileName\t" << dataFileName << '\n';
+				THROW("Cannot open file\n");
+			}
+			randomField_rho.Read_Initialize_OneIHField(inData, &in, &isPeriodic, &xM, &xm, resolutionFactor, sso_rho);
+		}
+		else if (buf == "layered_properties")
+		{
+			layered_properties.Read_Bulk_Elastic_Prop(in, serialNumber);
+		}
         else
         {
             cout << "buf:\t" << buf << '\n';

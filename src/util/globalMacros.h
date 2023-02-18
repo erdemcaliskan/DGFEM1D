@@ -5,6 +5,12 @@
 #include "commonMacros.h"
 #include <complex>
 
+#if VCPP
+#define USE_COMPLEX	0
+#else
+#define USE_COMPLEX	1
+#endif
+
 typedef Vc_dd VEC;
 typedef Mtrx_dd MAT;
 
@@ -34,7 +40,11 @@ typedef Mtrx_dm1 MATm1;
 #endif
 
 #define Dcomplex std::complex<double>
+#if USE_COMPLEX
 #define NUMBR Dcomplex
+#else
+#define NUMBR double
+#endif
 
 // constexpr auto NUM_SIDES = 2;
 // constexpr auto SDL = 0;

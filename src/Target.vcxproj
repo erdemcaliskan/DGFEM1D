@@ -1,62 +1,118 @@
-﻿< ? xml version = "1.0" encoding = "utf-8"
-    ? > <Project DefaultTargets = "Build" ToolsVersion = "15.0" xmlns =
-             "http://schemas.microsoft.com/developer/msbuild/2003"><ItemGroup Label = "ProjectConfigurations">
-          <ProjectConfiguration Include = "Debug|Win32"><Configuration> Debug</ Configuration>
-          <Platform> Win32</ Platform></ ProjectConfiguration><ProjectConfiguration Include = "Release|Win32">
-          <Configuration> Release</ Configuration><Platform> Win32</ Platform></ ProjectConfiguration></ ItemGroup>
-          <ItemGroup><ClInclude Include = "Configuration.h" /><ClInclude Include = "util\commonMacros.h" />
-          <ClInclude Include = "util\Dims.h" /><ClInclude Include = "util\FileIOMacros.h" />
-          <ClInclude Include = "util\globalFunctions.h" /><ClInclude Include = "util\globalMacros.h" />
-          <ClInclude Include = "util\globalTypesClasses.h" /><ClInclude Include = "util\LAFuncs.h" />
-          <ClInclude Include = "util\LAfuncsFinalStep.h" /><ClInclude Include = "util\LAfuncsFixed.h" />
-          <ClInclude Include = "util\OneDimensionalElement.h" /></ ItemGroup><ItemGroup>
-          <ClCompile Include = "Configuration.cpp" /><ClCompile Include = "main.cpp" />
-          <ClCompile Include = "util\globalFunctions.cpp" /><ClCompile Include = "util\globalMacros.cpp" />
-          <ClCompile Include = "util\globalTypesClasses.cpp" /><ClCompile Include = "util\LAfuncs.cpp" />
-          <ClCompile Include = "util\LAfuncsFinalStep.cpp" /><ClCompile Include = "util\LAfuncsFixed.cpp" />
-          <ClCompile Include = "util\OneDimensionalElement.cpp" /></ ItemGroup><PropertyGroup Label = "Globals">
-          <ProjectGuid>{581A0788 - A02B - 4E17 - 92C6 - F51D7F88D8C3}</ ProjectGuid>
-          <RootNamespace> CFEM</ RootNamespace><WindowsTargetPlatformVersion> 10.0.17134.0 <
-          / WindowsTargetPlatformVersion > </ PropertyGroup>
-          <Import Project = "$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-          <PropertyGroup Condition = "'$(Configuration)|$(Platform)'=='Release|Win32'" Label = "Configuration">
-          <ConfigurationType> Application</ ConfigurationType><PlatformToolset> v141</ PlatformToolset>
-          <CharacterSet> MultiByte</ CharacterSet><WholeProgramOptimization> true</ WholeProgramOptimization>
-          </ PropertyGroup>
-          <PropertyGroup Condition = "'$(Configuration)|$(Platform)'=='Debug|Win32'" Label = "Configuration">
-          <ConfigurationType> Application</ ConfigurationType><PlatformToolset> v141</ PlatformToolset>
-          <CharacterSet> MultiByte</ CharacterSet></ PropertyGroup>
-          <Import Project = "$(VCTargetsPath)\Microsoft.Cpp.props" /><ImportGroup Label = "ExtensionSettings">
-          </ ImportGroup>
-          <ImportGroup Condition = "'$(Configuration)|$(Platform)'=='Release|Win32'" Label = "PropertySheets">
-          <Import Project = "$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition =
-               "exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label = "LocalAppDataPlatform" />
-          </ ImportGroup>
-          <ImportGroup Condition = "'$(Configuration)|$(Platform)'=='Debug|Win32'" Label = "PropertySheets">
-          <Import Project = "$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition =
-               "exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label = "LocalAppDataPlatform" />
-          </ ImportGroup><PropertyGroup Label = "UserMacros" /><PropertyGroup><_ProjectFileVersion> 12.0.30501.0 <
-          / _ProjectFileVersion > </ PropertyGroup>
-          <PropertyGroup Condition = "'$(Configuration)|$(Platform)'=='Debug|Win32'"><OutDir> $(SolutionDir)
-              $(Configuration)\</ OutDir><IntDir> $(Configuration)\</ IntDir></ PropertyGroup>
-          <PropertyGroup Condition = "'$(Configuration)|$(Platform)'=='Release|Win32'"><OutDir> $(SolutionDir)
-              $(Configuration)\</ OutDir><IntDir> $(Configuration)\</ IntDir></ PropertyGroup>
-          <ItemDefinitionGroup Condition = "'$(Configuration)|$(Platform)'=='Debug|Win32'"><ClCompile>
-          <Optimization> Disabled</ Optimization><MinimalRebuild> true</ MinimalRebuild>
-          <BasicRuntimeChecks> EnableFastChecks</ BasicRuntimeChecks>
-          <RuntimeLibrary> MultiThreadedDebugDLL</ RuntimeLibrary><WarningLevel> Level1</ WarningLevel>
-          <DebugInformationFormat> EditAndContinue</ DebugInformationFormat><PreprocessorDefinitions> VCPP;
-_MBCS;
-% (PreprocessorDefinitions)</ PreprocessorDefinitions></ ClCompile><Link>
-    <GenerateDebugInformation> true</ GenerateDebugInformation><TargetMachine> MachineX86</ TargetMachine></ Link>
-    </ ItemDefinitionGroup><ItemDefinitionGroup Condition = "'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile><Optimization> MaxSpeed</ Optimization><IntrinsicFunctions> true</ IntrinsicFunctions>
-    <RuntimeLibrary> MultiThreadedDLL</ RuntimeLibrary><FunctionLevelLinking> true</ FunctionLevelLinking>
-    <WarningLevel> Level3</ WarningLevel><DebugInformationFormat> ProgramDatabase</ DebugInformationFormat>
-    <PreprocessorDefinitions> VCPP;
-_MBCS;
-% (PreprocessorDefinitions)</ PreprocessorDefinitions></ ClCompile><Link>
-    <GenerateDebugInformation> true</ GenerateDebugInformation><OptimizeReferences> true</ OptimizeReferences>
-    <EnableCOMDATFolding> true</ EnableCOMDATFolding><TargetMachine> MachineX86</ TargetMachine></ Link>
-    </ ItemDefinitionGroup><Import Project = "$(VCTargetsPath)\Microsoft.Cpp.targets" />
-    <ImportGroup Label = "ExtensionTargets"></ ImportGroup></ Project>
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="util\Configuration.cpp" />
+    <ClCompile Include="util\globalFunctions.cpp" />
+    <ClCompile Include="util\globalMacros.cpp" />
+    <ClCompile Include="util\globalTypesClasses.cpp" />
+    <ClCompile Include="util\InhomogeousField.cpp" />
+    <ClCompile Include="util\LAfuncs.cpp" />
+    <ClCompile Include="util\LAfuncsFinalStep.cpp" />
+    <ClCompile Include="util\LAfuncsFixed.cpp" />
+    <ClCompile Include="util\LayeredProperties.cpp" />
+    <ClCompile Include="util\OneDimensionalElement.cpp" />
+    <ClCompile Include="util\RandomVariable.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="util\commonMacros.h" />
+    <ClInclude Include="util\Configuration.h" />
+    <ClInclude Include="util\Dims.h" />
+    <ClInclude Include="util\FileIOMacros.h" />
+    <ClInclude Include="util\globalFunctions.h" />
+    <ClInclude Include="util\globalMacros.h" />
+    <ClInclude Include="util\globalTypesClasses.h" />
+    <ClInclude Include="util\InhomogeousField.h" />
+    <ClInclude Include="util\LAfuncs.h" />
+    <ClInclude Include="util\LAfuncsFinalStep.h" />
+    <ClInclude Include="util\LAfuncsFixed.h" />
+    <ClInclude Include="util\LayeredProperties.h" />
+    <ClInclude Include="util\OneDimensionalElement.h" />
+    <ClInclude Include="util\RandomVariable.h" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{581A0788-A02B-4E17-92C6-F51D7F88D8C3}</ProjectGuid>
+    <RootNamespace>CFEM</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>12.0.30501.0</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level1</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <PreprocessorDefinitions>VCPP;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PreprocessorDefinitions>VCPP;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

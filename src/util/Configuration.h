@@ -4,6 +4,8 @@
 #include "OneDimensionalElement.h"
 #include "globalMacros.h"
 #include "globalTypesClasses.h"
+#include "InhomogeousField.h"
+#include "LayeredProperties.h"
 
 // weights of the star values for one side of the interface
 // f_ -> factor of
@@ -31,7 +33,7 @@ class Configuration
 {
   public:
     Configuration();
-    void Main_SolveDomain(string &configName);
+    void Main_SolveDomain(const string &configName, int serialNumberIn = -1);
 
     // inputs
     string outputFileNameWOExt;
@@ -66,12 +68,33 @@ class Configuration
     bool isHelmholtz;
     double omega;
 
+	////////////////////////////////////////////////////
+	///// material properties
+	int serialNumber;
+	string serialNumber_str;
+	matPropT mPropt;
+	bool isPeriodic;
+	/// uniform option inputs		[mPropt == mpt_uniform]
+	int num_elements;
+	double xm, xM, E_uniform, rho_uniform, damping_uniform; // hE = (xM - xm)/num_elements
+	/// random_field option inputs		[mPropt == mpt_random_field] (some of mpt_uniform inputs are used too)
+	// resolutionFactor 
+	//					== 0 or +/-1 nothing happens
+	//					>  1  -> number of segments is DECREASED by this factor (e.g. if resolutionFactor ==  10 and numSegments = 1000 -> numSegments becoms 100)
+	//					<  -1 -> number of segments is INCREASED by this factor (e.g. if resolutionFactor == -10 and numSegments = 1000 -> numSegments becoms 10000)
+	int resolutionFactor;
+	OneIHField randomField_E;
+	setStatOp_type sso_E;
+	OneIHField randomField_rho;
+	setStatOp_type sso_rho;
+	/// Layered option inputs		[mPropt == mpt_layered]
+	Bulk_Elastic_Prop	layered_properties;
+
     /// large class members
     // we read / have already initialized [he, E, rho, damping] of elements[i].elementProps for each element and
     // calculate Z, c, etc. from this
+	double domain_length;
     vector<OneDimensionalElement> elements; // for uniform case; elements.resize(num_elements)
-    int num_elements;
-    double xm, xM, E_uniform, rho_uniform, damping_uniform; // hE = (xM - xm)/num_elements
     ////////////////////////////////////////////
     // Computed
     OneDimensionalParentElement parentElement;
@@ -101,7 +124,7 @@ class Configuration
 
   private:
     // functions called in Main_SolveDomain
-    void Read_ConfigFile(string configName);
+    void Read_ConfigFile(const string& configName);
     void Initialize_Configuration();
     void Read_ElementGeometryProperties();
     void Form_ElementMatrices();

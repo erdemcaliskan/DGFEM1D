@@ -25,6 +25,14 @@ void name2Type(string &name, BoundaryConditionT &typeVal);
 ostream &operator<<(ostream &out, BoundaryConditionT dat);
 istream &operator>>(istream &in, BoundaryConditionT &dat);
 
+typedef enum {mpt_uniform, mpt_random_field, mpt_layered, matPropT_SIZE} matPropT;
+
+string getName(matPropT dat);
+void name2Type(string &name, matPropT &typeVal);
+ostream &operator<<(ostream &out, matPropT dat);
+istream &operator>>(istream &in, matPropT &dat);
+
+
 class ElementProperties
 {
   public:
@@ -51,14 +59,24 @@ typedef enum
     StarOption_SIZE
 } StarOption;
 
+string getName(StarOption dat);
+void name2Type(string &name, StarOption &typeVal);
+ostream &operator<<(ostream &out, StarOption dat);
+istream &operator>>(istream &in, StarOption &dat);
+
 typedef enum
 {
-    cfem_1D,
+    cfem,
     DG_2FUV,
     DG_1F_vStar,
     DG_1F_uStar,
     WeakFormulationType_SIZE
 } WeakFormulationType;
+
+string getName(WeakFormulationType dat);
+void name2Type(string &name, WeakFormulationType &typeVal);
+ostream &operator<<(ostream &out, WeakFormulationType dat);
+istream &operator>>(istream &in, WeakFormulationType &dat);
 
 typedef enum
 {

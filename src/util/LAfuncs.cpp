@@ -122,6 +122,25 @@ const vector<double> &MATRIX::operator[](unsigned int i) const
     return matx[i];
 }
 
+double& MATRIX::operator()(unsigned int i, unsigned int j)
+{
+	return matx[i][j];
+}
+double MATRIX::operator()(unsigned int i, unsigned int j) const
+{
+	return matx[i][j];
+}
+
+double MATRIX::sum() const
+{
+	double sm = 0.0;
+	for (unsigned int i = 0; i < nrows; ++i)
+		for (unsigned int j = 0; j < ncols; ++j)
+			sm += matx[i][j];
+	return sm;
+}
+
+
 #if 0
 double& MATRIX::operator()(unsigned int i, unsigned int j)
 {
