@@ -1,21 +1,50 @@
 #include "util/Configuration.h"
 #include "util/globalMacros.h"
 
+#if USE_COMPLEX
 #include <Eigen/Dense>
+#endif
 
 using namespace std;
 
-int main(int, char **)
+// usage windows: add -s (serialNumber) [e.g. -s 1] to command arguments
+//			from cmd: use the compiled Target.exe in Release folder for this, may need to move it one folder up and run
+//			Target.exe 	-s (serialNumber) 
+// other: ./solver -s (serialNumber) [e.g. ./solver -s 1] 
+int main(int argc, char *argv[])
 {
-    std::cout << "Hello, world!\n";
+	serialNumber = 0;
+	string configName = "configFile.txt";
+	if (argc > 0)
+	{
+		for (int i = 1; i < argc; ++i)
+		{
+			if (strcmp(argv[i], "-s") == 0)
+			{
+				serialNumber = (unsigned int)atoi(argv[++i]);
+			}
+			else if (strcmp(argv[i], "-c") == 0)
+			{
+				configName = (string)argv[++i];
+			}
+			else
+			{
+				cout << "i\t" << i << '\n';
+				cout << "argv[i]\t" << argv[i] << '\n';
+				THROW("ERROR: Invalid flag--value option");
+			}
+		}
+	}
+
+//    std::cout << "Hello, world!\n";
     setGlobalMembers();
 
-    string configName = "";
     Configuration conf;
-    conf.Main_SolveDomain(configName);
+    conf.Main_SolveDomain(configName, serialNumber);
     return 0;
 
     // Example
+#if USE_COMPLEX
     Eigen::MatrixXcd m(2, 2); // MatrixXcd typedef Matrix< std::complex< double >,
                               // Dynamic, Dynamic >
     m << 1.0f + 2.0if, 2.0f + 1.0if, 3.0f - 1.0if, 4.0f - 2.0if;
@@ -32,6 +61,10 @@ int main(int, char **)
     Eigen::ComplexEigenSolver<Eigen::MatrixXcd> ces;
     ces.compute(m * n.transpose());
     cout << "Eigen Values:\n" << ces.eigenvalues() << endl;
-
+#endif
+#if VCPP
+	cout << "successful solution\n";
+	getchar();
+#endif
     return 0;
 }

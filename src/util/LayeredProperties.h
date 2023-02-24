@@ -46,7 +46,7 @@ class Bulk_Elastic_Prop
 {
 public:
 	Bulk_Elastic_Prop();
-	void Read_Bulk_Elastic_Prop(istream& in, int serialNumber = -1);
+	void Read_Bulk_Elastic_Prop(istream& in, int serialNumber = -1, bool readData = true);
 
 	// read data
 	map<GID, oneBulk_Elastic_Prop> baseBulkProperties;

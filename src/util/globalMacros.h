@@ -8,7 +8,8 @@
 #if VCPP
 #define USE_COMPLEX	0
 #else
-#define USE_COMPLEX	1
+//#define USE_COMPLEX	1
+#define USE_COMPLEX	0
 #endif
 
 typedef Vc_dd VEC;
@@ -54,7 +55,7 @@ typedef long GID;
 
 // extern string g_prefileName;
 extern Dcomplex Icomp;
-
+extern int serialNumber;
 void setGlobalMembers();
 
 #endif

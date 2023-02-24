@@ -149,7 +149,7 @@ Bulk_Elastic_Prop::Bulk_Elastic_Prop()
 	b_directSpaceSizeModifier = false;
 }
 
-void Bulk_Elastic_Prop::Read_Bulk_Elastic_Prop(istream& in, int serialNumber)
+void Bulk_Elastic_Prop::Read_Bulk_Elastic_Prop(istream& in, int serialNumber, bool readData)
 {
 	string serialNumber_str = "";
 	if (serialNumber >= 0)
@@ -203,38 +203,41 @@ void Bulk_Elastic_Prop::Read_Bulk_Elastic_Prop(istream& in, int serialNumber)
 		{
 			string fileName4Modifier;
 			READ_NSTRING(in, buf, fileName4Modifier);
-			fstream indat;
+			if (readData)
+			{
+				fstream indat;
 #if 0
-			if (fileName4Modifier == "inline")
-			{
-				indat.open(fileName.c_str(), ios::in);
-				buf = "none";
-				while (buf != "bulkModifiers_direct")
-					READ_NSTRING(in, buf, buf);
-			}
-			else
-#endif
-			{
-				fileName4Modifier += serialNumber_str;
-				fileName4Modifier += ".txt";
-				indat.open(fileName4Modifier.c_str(), ios::in);
-				if (!indat.is_open())
+				if (fileName4Modifier == "inline")
 				{
-					cout << "fileName4Modifier\t" << fileName4Modifier << '\n';
-					THROW("Cannot open file\n");
+					indat.open(fileName.c_str(), ios::in);
+					buf = "none";
+					while (buf != "bulkModifiers_direct")
+						READ_NSTRING(in, buf, buf);
 				}
-			}
-			READ_NSTRING(indat, buf, buf);
-			if (buf != "{")
-			{
-				THROW("start of block should start with {");
-			}
-			Bulk_Elastic_Modifier bem;
-			bool cont_reading = bem.Read_Bulk_Elastic_Modifier(indat);
-			while (cont_reading)
-			{
-				bulkModifiers.push_back(bem);
-				cont_reading = bem.Read_Bulk_Elastic_Modifier(indat);
+				else
+#endif
+				{
+					fileName4Modifier += serialNumber_str;
+					fileName4Modifier += ".txt";
+					indat.open(fileName4Modifier.c_str(), ios::in);
+					if (!indat.is_open())
+					{
+						cout << "fileName4Modifier\t" << fileName4Modifier << '\n';
+						THROW("Cannot open file\n");
+					}
+				}
+				READ_NSTRING(indat, buf, buf);
+				if (buf != "{")
+				{
+					THROW("start of block should start with {");
+				}
+				Bulk_Elastic_Modifier bem;
+				bool cont_reading = bem.Read_Bulk_Elastic_Modifier(indat);
+				while (cont_reading)
+				{
+					bulkModifiers.push_back(bem);
+					cont_reading = bem.Read_Bulk_Elastic_Modifier(indat);
+				}
 			}
 		}
 		else

@@ -988,30 +988,41 @@ void Configuration::Read_ConfigFile(const string& configName)
 			string baseName_WOExt;
 			READ_NSTRING(in, buf, baseName_WOExt);
 			string dataFileName = baseName_WOExt + serialNumber_str + ".txt";
-			fstream inData(dataFileName.c_str(), ios::in);
-			if (!inData.is_open())
+			fstream inData;
+			bool readData = ((mPropt == mpt_random_field) && (sso_E != sso_none));
+			if (readData)
 			{
-				cout << "dataFileName\t" << dataFileName << '\n';
-				THROW("Cannot open file\n");
+				inData.open(dataFileName.c_str(), ios::in);
+				if (!inData.is_open())
+				{
+					cout << "dataFileName\t" << dataFileName << '\n';
+					THROW("Cannot open file\n");
+				}
 			}
-			randomField_E.Read_Initialize_OneIHField(inData, &in, &isPeriodic, &xM, &xm, resolutionFactor, sso_E);
+			randomField_E.Read_Initialize_OneIHField(inData, &in, &isPeriodic, &xM, &xm, resolutionFactor, sso_E, readData);
 		}
 		else if (buf == "randomField_rho")
 		{
 			string baseName_WOExt;
 			READ_NSTRING(in, buf, baseName_WOExt);
 			string dataFileName = baseName_WOExt + serialNumber_str + ".txt";
-			fstream inData(dataFileName.c_str(), ios::in);
-			if (!inData.is_open())
+			fstream inData;
+			bool readData = ((mPropt == mpt_random_field) && (sso_rho != sso_none));
+			if (readData)
 			{
-				cout << "dataFileName\t" << dataFileName << '\n';
-				THROW("Cannot open file\n");
+				inData.open(dataFileName.c_str(), ios::in);
+				if (!inData.is_open())
+				{
+					cout << "dataFileName\t" << dataFileName << '\n';
+					THROW("Cannot open file\n");
+				}
 			}
-			randomField_rho.Read_Initialize_OneIHField(inData, &in, &isPeriodic, &xM, &xm, resolutionFactor, sso_rho);
+			randomField_rho.Read_Initialize_OneIHField(inData, &in, &isPeriodic, &xM, &xm, resolutionFactor, sso_rho, readData);
 		}
 		else if (buf == "layered_properties")
 		{
-			layered_properties.Read_Bulk_Elastic_Prop(in, serialNumber);
+			bool readData = (mPropt == mpt_layered);
+			layered_properties.Read_Bulk_Elastic_Prop(in, serialNumber, readData);
 		}
         else
         {
@@ -1024,7 +1035,9 @@ void Configuration::Read_ConfigFile(const string& configName)
 
 void Configuration::Process_Output_GlobalMatrices()
 {
-    string filename = outputFileNameWOExt + ".txt";
+	string str_ser;
+	toString(serialNumber, str_ser);
+    string filename = outputFileNameWOExt + "_" + str_ser + ".txt";
     fstream out(filename.c_str(), ios::out);
     out << "wf_type\t" << wf_type << '\n';
     out << "ndof_domain\t" << ndof_domain << '\n';

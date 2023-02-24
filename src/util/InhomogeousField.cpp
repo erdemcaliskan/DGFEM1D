@@ -1,4 +1,5 @@
 #include "InhomogeousField.h"
+#include "globalMacros.h"
 
 #define PRNT_FLDOUT_RANDOM 1
 
@@ -105,16 +106,18 @@ void OneIHField::Read_DataOnly(istream& inData)
 	Finalize_Values();
 }
 
-void OneIHField::Read_Initialize_OneIHField(istream& inData, istream* inConfigPtr, bool* isPeriodicPtr, double* xMPtr, double* xmPtr, int resolutionFactor, setStatOp_type sso)
+void OneIHField::Read_Initialize_OneIHField(istream& inData, istream* inConfigPtr, bool* isPeriodicPtr, double* xMPtr, double* xmPtr, int resolutionFactor, setStatOp_type sso, bool readData)
 {
 	Read_InstructionsOnly(inConfigPtr, isPeriodicPtr, xMPtr, xmPtr);
+	if (!readData)
+		return;
 	Read_DataOnly(inData);
 
 #if PRNT_FLDOUT_RANDOM
-	static int cntr = 0;
+//	static int cntr = 0;
 	string cntrStr;
 	ostringstream convert;
-	convert << cntr;
+	convert << serialNumber;
 	cntrStr = convert.str();
 //	string name = g_prefileName + "field" + cntrStr + "_initialResolution.txt";
 	string name = "field" + cntrStr + "_initialResolution.txt";

@@ -15,7 +15,7 @@ public:
 	// inData: input for data
 	// inConfig: read INPUTs below (all booleans given) plus bool num_Vals_and_x_Provided, bool containsRepeatingEndPeriodicVal
 	// the last 3 values are provided as pointers to provide (isPeriodic, xM, xm) in case they are provided from outside
-	void Read_Initialize_OneIHField(istream& inData, istream* inConfigPtr, bool* isPeriodicPtr = NULL, double* xMPtr = NULL, double* xmPtr = NULL, int resolutionFactor = 1, setStatOp_type sso = sso_mean_arithmetic);
+	void Read_Initialize_OneIHField(istream& inData, istream* inConfigPtr, bool* isPeriodicPtr = NULL, double* xMPtr = NULL, double* xmPtr = NULL, int resolutionFactor = 1, setStatOp_type sso = sso_mean_arithmetic, bool readData = true);
 	// resolutionFactor 
 	//					== 0 or +/-1 nothing happens
 	//					>  1  -> number of segments is DECREASED by this factor (e.g. if resolutionFactor ==  10 and numSegments = 1000 -> numSegments becoms 100)
