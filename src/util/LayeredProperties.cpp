@@ -1,6 +1,6 @@
 #include "LayeredProperties.h"
 #include "commonMacros.h"
-
+#include "float.h"
 istream & operator>>(istream & in, oneBulk_Elastic_Prop & dat)
 {
 	string buf;

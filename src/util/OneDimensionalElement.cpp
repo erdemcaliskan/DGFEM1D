@@ -89,9 +89,9 @@ void OneDimensionalParentElement::Initialize(unsigned int polyOrderIn, bool lump
         Be_leftNode[2] = 2.0;
 
         // dN/dxi on the right side
-        Be_leftNode[0] = 0.5;
-        Be_leftNode[1] = 1.5;
-        Be_leftNode[2] = -2.0;
+        Be_rightNode[0] = 0.5;
+        Be_rightNode[1] = 1.5;
+        Be_rightNode[2] = -2.0;
     }
 }
 

@@ -13,6 +13,7 @@
 class StarW1s
 {
   public:
+    StarW1s();
     // sigma_nStar = ss_f_sigmaL * sigmaL + ss_f_sigmaR * sigmaR + ss_f_wL * wL +
     // ss_f_wR * wR
     NUMBR ss_f_sigmaL, ss_f_sigmaR, ss_f_wL, ss_f_wR;

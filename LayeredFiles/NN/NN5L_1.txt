@@ -1,0 +1,33 @@
+{
+# bulk 1
+	{
+		# length
+		l	1.45
+		# flag
+		f	1
+		# C, rho, and d factors (not needed as they are one here ...)
+		C	1.0
+		r	1.0
+		d	1.0
+	}
+# bulk 2
+	{
+		l	0.5
+		f	2
+	}
+# bulk 3
+	{
+		l	0.435
+		f	3
+	}
+# bulk 2
+	{
+		l	0.5
+		f	2
+	}
+# bulk 1
+	{
+		l	1.45
+		f	1
+	}
+}

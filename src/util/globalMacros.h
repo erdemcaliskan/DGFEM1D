@@ -58,4 +58,14 @@ extern Dcomplex Icomp;
 extern int serialNumber;
 void setGlobalMembers();
 
+#define DB_MODE 1
+
+#if DB_MODE
+#define DB(x) x
+extern fstream db;
+#else
+#define DB(x)
+#endif
+
+
 #endif

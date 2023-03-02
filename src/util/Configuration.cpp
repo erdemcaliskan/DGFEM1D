@@ -266,8 +266,8 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         B_rightElement[i] = Jacobian_rightElement * parentElement.Be_leftNode[i];
     }
 
-    StarW1s *startFactors4LeftSide = &twoSideWeights.side_weights[SDL];
-    StarW1s *startFactors4RightSide = &twoSideWeights.side_weights[SDR];
+    StarW1s *starFactors4LeftSide = &twoSideWeights.side_weights[SDL];
+    StarW1s *starFactors4RightSide = &twoSideWeights.side_weights[SDR];
     // wHat x sigma*_n + epsilon sigmaHat.n (w* - w)
     //! A: wHat x sigma*_n - w = v for 2F and u for 1F formulations
     for (unsigned int i = 0; i < ndof_parent_element; ++i) // vHat of left element
@@ -278,8 +278,8 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         // dVhatR_daR -> is the shape of the right element at its left point = N_rigtElement
         double dVhatR_daR = N_rightElement[i];
         // a. Dependencies of Star on Left (sigmaL & velL)
-        NUMBR dSigmaStar_dsigmaL = startFactors4LeftSide->ss_f_sigmaL;
-        NUMBR dSigmaStar_dvelL = startFactors4LeftSide->ss_f_wL;
+        NUMBR dSigmaStar_dsigmaL = starFactors4LeftSide->ss_f_sigmaL;
+        NUMBR dSigmaStar_dvelL = starFactors4LeftSide->ss_f_wL;
         for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             double d_sigmaL_daL = B_leftElement[j] * left_e.elementProps.E; // strain at that point times stress
@@ -293,8 +293,8 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
             (*matrix4wSlnField)(i + start_dof_r_w, j + start_dof_l_w) += dVhatR_daR * dSigmaStar_daL;
         }
         // b. Dependencies of Star on Right (sigmaR & velR)
-        NUMBR dSigmaStar_dsigmaR = startFactors4LeftSide->ss_f_sigmaR;
-        NUMBR dSigmaStar_dvelR = startFactors4LeftSide->ss_f_wR;
+        NUMBR dSigmaStar_dsigmaR = starFactors4LeftSide->ss_f_sigmaR;
+        NUMBR dSigmaStar_dvelR = starFactors4LeftSide->ss_f_wR;
         for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             double d_sigmaR_daR = B_rightElement[j] * right_e.elementProps.E; // strain at that point times stress
@@ -308,6 +308,8 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
             (*matrix4wSlnField)(i + start_dof_r_w, j + start_dof_r_w) += dVhatR_daR * dSigmaStar_daR;
         }
     }
+    DB(db << interfaceK << endl);
+
     //
     //! B: epsilon (beta) sigmaHat.n (w* - w) [w = v for 2F, 1Fv, = u for 1Fu] -> beta = timeScale only for 1Fu*
     if (dg_eps == dg_eps_0)
@@ -321,8 +323,8 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         double eps_x_d_sigmaR_dot_nR_daR =
             -dg_eps_factor * B_rightElement[i] * right_e.elementProps.E; // strain at that point times stress
         // a. dependence of w* - w = vel* - v(or u* - u) on the left element - [sigmaL & velL]
-        NUMBR dwStar_minus_w_dsigmaL = startFactors4LeftSide->ws_f_sigmaL;
-        NUMBR dwStar_minus_w_dwL = startFactors4LeftSide->ws_f_wL - 1.0; // (*) dw*/dwL - dwL/dwL = ws_f_wL - 1
+        NUMBR dwStar_minus_w_dsigmaL = starFactors4LeftSide->ws_f_sigmaL;
+        NUMBR dwStar_minus_w_dwL = starFactors4LeftSide->ws_f_wL - 1.0; // (*) dw*/dwL - dwL/dwL = ws_f_wL - 1
         for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             // sigma solutions
@@ -347,8 +349,8 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         }
 
         // b. dependence of w* = vel*(or u*) on the right element - [sigmaR & velR]
-        NUMBR dwStar_minus_w_dsigmaR = startFactors4LeftSide->ws_f_sigmaR;
-        NUMBR dwStar_minus_w_dwR = startFactors4LeftSide->ws_f_wR - 1.0; // see (*) above
+        NUMBR dwStar_minus_w_dsigmaR = starFactors4LeftSide->ws_f_sigmaR;
+        NUMBR dwStar_minus_w_dwR = starFactors4LeftSide->ws_f_wR - 1.0; // see (*) above
         for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             // sigma solutions
@@ -661,6 +663,8 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 
     /// Step A:  Interior of the elments
     unsigned int st;
+    if (0)
+    {
     for (unsigned int ei = 0; ei < num_elements; ++ei)
     {
         st = element_start_dof[ei];
@@ -690,6 +694,7 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
                 for (unsigned int j = 0; j < ndof_element; ++j)
                     globalC(i + st, j + st) += ePtr->ce[i][j];
         }
+    }
     }
 
     /// Step B:  Inter-element facets
@@ -1048,4 +1053,17 @@ void Configuration::Process_Output_GlobalMatrices()
     out << "b_hasNonZeroDampingMatrix\n" << b_hasNonZeroDampingMatrix << '\n';
     out << "C\n" << globalC << '\n';
     out << "C.sum\n" << globalC.sum() << '\n';
+}
+
+StarW1s::StarW1s()
+{
+    ss_f_sigmaL = 0.0;
+    ss_f_sigmaR = 0.0;
+    ss_f_wL = 0.0;
+    ss_f_wR = 0.0;
+    ws_f_sigmaL = 0.0;
+    ws_f_sigmaR = 0.0;
+    ws_f_wL = 0.0;
+    ws_f_wR = 0.0;
+  
 }
