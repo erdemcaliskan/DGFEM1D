@@ -10,8 +10,12 @@ class MATRIX;
 typedef Eigen::MatrixXcd DCMATRIX;
 #define ZEROMAT(x)     x.setConstant(0.0)
 #else
-typedef MATRIX DCMATRIX;
-#define ZEROMAT(x)     x = 0.0
+#include <Eigen/Dense>
+//typedef MATRIX DCMATRIX; // 
+//typedef Eigen::MatrixXcd DCMATRIX;
+//typedef Eigen::MatrixXf DCMATRIX;
+typedef Eigen::MatrixXd DCMATRIX;
+#define ZEROMAT(x,n,m) x.setConstant(0.0) //x = 0.0 // Eigen::MatrixXd::Zero(n,m)   // Eigen::MatrixXf::Zero(n,m) //  Eigen::MatrixXcd::Zero(n,m)  //
 #endif
 
 

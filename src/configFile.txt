@@ -1,7 +1,7 @@
 {
-# polynomidal orer for elements
+# polynomidal order for elements
 polyOrder 
-1
+2
 
 lumpMass 
 0
@@ -9,7 +9,7 @@ lumpMass
 # cfem	DG_2FUV	DG_1F_vStar	DG_1F_uStar
 wf_type
 #cfem
-DG_2FUV
+DG_1F_vStar
 
 isBlochModeAnalysis
 0
@@ -20,14 +20,13 @@ isHelmholtz
 omega
 1.0
 
-# Riemann	Central	Alternating_sL	Alternating_sR
+# Riemann  Central	Alternating_sL	Alternating_sR
 sOption
 Riemann
 
 # -1	0	1
 dg_eps
--1
-
+1
 
 # factor(etaI)[u][u] penalty term inside the domain
 etaI
@@ -53,9 +52,9 @@ output
 ################################################################################# material properties
 ############################			uniform	(option 1)		random_field (option 2)			layered (option 3)
 mPropt
-#uniform
+uniform
 #random_field
-layered
+#layered
 
 ### Option 1: mPropt == uniform
 num_elements

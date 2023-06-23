@@ -2,6 +2,8 @@
 #include "commonMacros.h"
 #include "float.h"
 
+#include <Eigen/Eigenvalues>
+
 Configuration::Configuration()
 {
     wf_type = DG_1F_vStar; // cfem DG_2FUV DG_1F_vStar;
@@ -88,10 +90,10 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
         shared_sigmaStar_wStarWeights.ss_f_wL = -shared_sigmaStar_wStarWeights.ss_f_wR;
 
         // Velocity* weights (still not necessarily w weights)
-        shared_sigmaStar_wStarWeights.ws_f_sigmaL = -ZlpZr_inv;
+        shared_sigmaStar_wStarWeights.ws_f_sigmaL = ZlpZr_inv;
         shared_sigmaStar_wStarWeights.ws_f_sigmaR = ZlpZr_inv;
-        shared_sigmaStar_wStarWeights.ws_f_wR = Zl_div_ZlpZr;
-        shared_sigmaStar_wStarWeights.ws_f_wL = Zr_div_ZlpZr;
+        shared_sigmaStar_wStarWeights.ws_f_wR = Zl_div_ZlpZr;  // DAMPING
+        shared_sigmaStar_wStarWeights.ws_f_wL = Zr_div_ZlpZr;  // DAMPING
     }
     else
     {
@@ -212,6 +214,7 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
     //		for 1Fv* this will be interfaceC
     //		for other formulations 1Fu* and 2D this will be interfaceK
     interfaceK.resize(size_interfaceMatrices, size_interfaceMatrices);
+    ZEROMAT(interfaceK, size_interfaceMatrices, size_interfaceMatrices);
     DCMATRIX *matrix4wSlnField;
     matrix4wSlnField = &interfaceK;
     bool hasC = false;
@@ -241,6 +244,7 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         if (wf_type == DG_1F_vStar)
         {
             interfaceC.resize(size_interfaceMatrices, size_interfaceMatrices);
+            ZEROMAT(interfaceC, size_interfaceMatrices, size_interfaceMatrices);
             matrix4wSlnField = &interfaceC;
             hasC = true;
             // time scale of the element is needed
@@ -291,6 +295,7 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
             dSigmaStar_daL = dSigmaStar_dvelL * d_vell_daL;
             (*matrix4wSlnField)(i + start_dof_l_w, j + start_dof_l_w) += dVhatL_daL * dSigmaStar_daL;
             (*matrix4wSlnField)(i + start_dof_r_w, j + start_dof_l_w) += dVhatR_daR * dSigmaStar_daL;
+//            cout << interfaceK<< endl;
         }
         // b. Dependencies of Star on Right (sigmaR & velR)
         NUMBR dSigmaStar_dsigmaR = starFactors4LeftSide->ss_f_sigmaR;
@@ -648,23 +653,24 @@ void Configuration::Form_ElementMatrices()
 void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 {
     globalK.resize(nfdof_domain, nfdof_domain);
-	ZEROMAT(globalK);
+    
+	ZEROMAT(globalK,nfdof_domain,nfdof_domain);
 
 	if (assembleMassIn)
     {
         globalM.resize(nfdof_domain, nfdof_domain);
-		ZEROMAT(globalM);
+		ZEROMAT(globalM,nfdof_domain,nfdof_domain);
     }
     if (b_hasNonZeroDampingMatrix)
     {
         globalC.resize(nfdof_domain, nfdof_domain);
-		ZEROMAT(globalC);
+		ZEROMAT(globalC,nfdof_domain,nfdof_domain);
     }
 
     /// Step A:  Interior of the elments
     unsigned int st;
-    if (0)
-    {
+//z    if (0)
+//z    {
     for (unsigned int ei = 0; ei < num_elements; ++ei)
     {
         st = element_start_dof[ei];
@@ -692,10 +698,12 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
             OneDimensionalElement *ePtr = &elements[ei];
             for (unsigned int i = 0; i < ndof_element; ++i)
                 for (unsigned int j = 0; j < ndof_element; ++j)
+                {
                     globalC(i + st, j + st) += ePtr->ce[i][j];
+                }
         }
     }
-    }
+//    }
 
     /// Step B:  Inter-element facets
     bool doesHaveBlochOrPeriodicBC = ((leftBC == bct_PeriodicOrBloch) || (rightBC == bct_PeriodicOrBloch));
@@ -733,6 +741,8 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
         right_e_dof_st = element_start_dof[interfacei];
         right_ePtr = &elements[interfacei];
         DCMATRIX interfaceK, interfaceC;
+        ZEROMAT(interfaceK,ndof_element,ndof_element);
+        ZEROMAT(interfaceC,ndof_element,ndof_element);
         bool hasC = Assemble_InteriorInterface_Matrices_2_Global_System(*left_ePtr, *right_ePtr, insideDomainInterface,
                                                                         interfaceK, interfaceC);
 
@@ -744,6 +754,7 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
                 for (unsigned int j = 0; j < interface_dof; ++j)
                 {
                     globalK(i + left_e_dof_st, j + left_e_dof_st) += interfaceK(i, j);
+//                    cout << "K(" << i + left_e_dof_st << "," << j + left_e_dof_st << ") = " << interfaceK(i, j) << endl;
                 }
             }
             if (hasC)
@@ -753,6 +764,8 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
                     for (unsigned int j = 0; j < interface_dof; ++j)
                     {
                         globalC(i + left_e_dof_st, j + left_e_dof_st) += interfaceC(i, j);
+//                        cout << "interfaceC = " << interfaceC << endl;
+//                        cout << "C = " << globalC << endl;
                     }
                 }
             }
@@ -798,20 +811,20 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 void Configuration::AssembleGlobalMatrices_CFEM(bool assembleMassIn)
 {
     globalK.resize(nfdof_domain, nfdof_domain);
-	ZEROMAT(globalK);
+	ZEROMAT(globalK,nfdof_domain,nfdof_domain);
 
     if (assembleMassIn)
     {
         globalM.resize(nfdof_domain, nfdof_domain);
-		ZEROMAT(globalM);
+		ZEROMAT(globalM,nfdof_domain,nfdof_domain);
     }
     if (b_hasNonZeroDampingMatrix)
     {
         globalC.resize(nfdof_domain, nfdof_domain);
-		ZEROMAT(globalC);
+		ZEROMAT(globalC,nfdof_domain,nfdof_domain);
     }
 
-    unsigned int I, J; // I, J are global matrix rows and columns
+    int I, J; // I, J are global matrix rows and columns
     // i, j are local matrix rows and columns
 
     /// Step A:  Interior of the elments
@@ -825,7 +838,11 @@ void Configuration::AssembleGlobalMatrices_CFEM(bool assembleMassIn)
             for (unsigned int j = 0; j < ndof_element; ++j)
             {
                 J = (*e_dofMap)[j];
-                globalK(I, J) += ePtr->ke[i][j];
+                if ( double(I) >= 0.0 && double(J) >= 0 )
+                {
+                    globalK(I, J) += ePtr->ke[i][j];
+                }
+ //               globalK(I, J) += ePtr->ke[i][j];
             }
         }
     }
@@ -841,7 +858,8 @@ void Configuration::AssembleGlobalMatrices_CFEM(bool assembleMassIn)
                 for (unsigned int j = 0; j < ndof_element; ++j)
                 {
                     J = (*e_dofMap)[j];
-                    globalM(I, J) += ePtr->me[i][j];
+                    if ( I >= 0 && J >= 0 )
+                        globalM(I, J) += ePtr->me[i][j];
                 }
             }
         }
@@ -1053,6 +1071,23 @@ void Configuration::Process_Output_GlobalMatrices()
     out << "b_hasNonZeroDampingMatrix\n" << b_hasNonZeroDampingMatrix << '\n';
     out << "C\n" << globalC << '\n';
     out << "C.sum\n" << globalC.sum() << '\n';
+
+    //Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
+    //ges.compute(globalM,globalK);
+//
+    //out << "eigenvalues\n" << ges.eigenvalues() << '\n';
+//
+    //Eigen::EigenSolver<Eigen::MatrixXd> es;
+//
+    //es.compute (globalM.inverse()*globalK, /* computeEigenvectors = */ false);
+//
+    //out << "eigenvalues\n" << es.eigenvalues() << '\n';
+
+    Eigen::ComplexEigenSolver<Eigen::MatrixXd> ces;
+
+    ces.compute (globalM.inverse()*globalK);
+
+    out << "eigenvalues\n" << ces.eigenvalues() << '\n';
 }
 
 StarW1s::StarW1s()

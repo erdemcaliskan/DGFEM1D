@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
 
     Configuration conf;
     conf.Main_SolveDomain(configName, serialNumber);
+
+
     return 0;
 
     // Example
