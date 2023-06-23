@@ -89,7 +89,7 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
         shared_sigmaStar_wStarWeights.ss_f_wR = Zl * Zr * ZlpZr_inv;
         shared_sigmaStar_wStarWeights.ss_f_wL = -shared_sigmaStar_wStarWeights.ss_f_wR;
 
-        // Velocity* weights (still not necessarily w weights)
+        // Velocity* weights (still not necessarily w weights) /// check this
         shared_sigmaStar_wStarWeights.ws_f_sigmaL = ZlpZr_inv;
         shared_sigmaStar_wStarWeights.ws_f_sigmaR = ZlpZr_inv;
         shared_sigmaStar_wStarWeights.ws_f_wR = Zl_div_ZlpZr;  // DAMPING
