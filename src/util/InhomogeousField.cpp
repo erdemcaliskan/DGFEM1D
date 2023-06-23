@@ -69,7 +69,16 @@ void OneIHField::Read_InstructionsOnly(istream* inConfigPtr, bool* isPeriodicPtr
 			}
 			else if (buf == "containsRepeatingEndPeriodicVal")
 			{
-				READ_NBOOL(*inConfigPtr, buf, containsRepeatingEndPeriodicVal);
+				int tmpi;
+				READ_NINTEGER(*inConfigPtr, buf, tmpi);
+				if (tmpi == -1)
+				{
+					if (isPeriodic)
+						tmpi = 1;
+					else
+						tmpi = 0;
+				}
+				containsRepeatingEndPeriodicVal = bool(tmpi);
 			}
 			else if (buf == "xm")
 			{
@@ -421,6 +430,17 @@ void OneIHField::Read_Vals_xs(istream & in, bool num_vals_and_x_Provided, bool c
 	}
 	if (addLastPeriodicValue)
 		vals.push_back(vals[0]);
+	else
+	{
+		if (isPeriodic)
+		{
+			unsigned int sz = vals.size();
+			double valLast = vals[sz - 1];
+			double ave = 0.5 * (vals[0] + valLast);
+			vals[0] = ave;
+			vals[sz - 1] = ave;
+		}
+	}
 	unsigned int num_vals = vals.size();
 
 	if (valsAtVertices)

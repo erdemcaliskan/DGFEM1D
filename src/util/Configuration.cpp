@@ -314,7 +314,6 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         }
     }
     DB(db << interfaceK << endl);
-
     //
     //! B: epsilon (beta) sigmaHat.n (w* - w) [w = v for 2F, 1Fv, = u for 1Fu] -> beta = timeScale only for 1Fu*
     if (dg_eps == dg_eps_0)
@@ -379,7 +378,7 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
                 eps_x_d_sigmaR_dot_nR_daR * dwStar_minus_w_daR;
         }
     }
-    return hasC;
+	return hasC;
 }
 
 bool Configuration::HasNonZeroDampingMatrix() const

@@ -22,7 +22,8 @@ omega
 
 # Riemann  Central	Alternating_sL	Alternating_sR
 sOption
-Riemann
+Central
+#Riemann
 
 # -1	0	1
 dg_eps
@@ -30,11 +31,13 @@ dg_eps
 
 # factor(etaI)[u][u] penalty term inside the domain
 etaI
-1.0
+0.0
+#1.0
 
 # factor(etaB)[u][u] penalty term on Dirichlet BC
 etaB
-1.0
+0.0
+#1.0
 
 #   Dirichlet	Neumann		Characteristics		Unspecified		Symmetric		AntiSymmetric	PeriodicOrBloch
 # only Neumann implemented; PeriodicOrBloch entry here seems sufficient and isBlochModeAnalysis above may be removed (TODO)
