@@ -80,6 +80,25 @@ istream &operator>>(istream &in, WeakFormulationType &dat);
 
 typedef enum
 {
+	// matrix only
+	smt_Mats_Only,	 // M, C, K computed
+	smt_Mats_OnlyNaturalMode, // (-M omega^2 + i omega C + K) a  = 0 is solved for omega
+	smt_Mats_OnlyBloch,		 // option for Bloch mode analysis 
+	// matrix and RHS F
+	smt_MatsF_Static, // Ka = F
+	smt_MatsF_Dynamic, // Ma'' + Ca' + Ka = F is solved dynamically - time stepping option should be provided separately
+	smt_MatsF_Helmholtz, // (-M omega^2 + i omega C + K) a = F
+	SolutionModeT_SIZE
+} SolutionModeT;
+
+string getName(SolutionModeT dat);
+void name2Type(string &name, SolutionModeT &typeVal);
+ostream &operator<<(ostream &out, SolutionModeT dat);
+istream &operator>>(istream &in, SolutionModeT &dat);
+void SetBooleans_SolutionMode(SolutionModeT sm, bool& needForce, bool& isDynamic);
+
+typedef enum
+{
     dg_eps_m1 = -1,
     dg_eps_0,
     dg_eps_p1,

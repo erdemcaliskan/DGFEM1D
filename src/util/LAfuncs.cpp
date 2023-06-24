@@ -54,9 +54,19 @@ double &VECTOR::operator[](unsigned int i)
     return vec[i];
 }
 
+double &VECTOR::operator()(unsigned int i)
+{
+	return vec[i];
+}
+
 double VECTOR::operator[](unsigned int i) const
 {
     return vec[i];
+}
+
+double VECTOR::operator()(unsigned int i) const
+{
+	return vec[i];
 }
 
 VECTOR &VECTOR::operator=(double val)

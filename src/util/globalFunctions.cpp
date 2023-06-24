@@ -1,5 +1,6 @@
 #include "globalFunctions.h"
 #include <float.h>
+#include "globalMacros.h"
 
 int SetNewtonCotes_Points_AndWeights(int numSpatialSubsegmentsPerSegment, vector<double> &spatialIntegrationWeights,
                                      vector<double> &spatialIntegrationPoints)
@@ -113,4 +114,25 @@ double computeRatio(double numerator, double denominator)
         return -max_ret;
 
     return ratio;
+}
+
+void ReadVectorDouble(istream& in, vector<double>& dat) 
+{
+	double tmp;
+	string buf;
+	READ_NSTRING(in, buf, buf);
+	dat.clear();
+	if (buf != "{")
+		THROW("istream should start with {");
+	READ_NSTRING(in, buf, buf);
+	while (buf != "}")
+	{
+		if (fromString(buf, tmp) == false)
+		{
+			cout << "buf\t" << buf << '\n';
+			THROW("Value must be double\n");
+		}
+		dat.push_back(tmp);
+		READ_NSTRING(in, buf, buf);
+	}
 }

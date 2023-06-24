@@ -1,11 +1,15 @@
 #include "Configuration.h"
 #include "commonMacros.h"
 #include "float.h"
+#include "globalFunctions.h"
 
+#if USE_COMPLEX
 #include <Eigen/Eigenvalues>
+#endif
 
 Configuration::Configuration()
 {
+	solutionMode = smt_Mats_OnlyNaturalMode;
     wf_type = DG_1F_vStar; // cfem DG_2FUV DG_1F_vStar;
     sOption = so_Riemann;
     dg_eps = dg_eps_p1;
@@ -24,6 +28,10 @@ Configuration::Configuration()
     polyOrder = 1;
     leftBC = bct_Neumann;
     rightBC = bct_Neumann;
+	leftBC_loadNumber = 0, rightBC_loadNumber = 0;
+	leftBC_loadValues.push_back(0.0);
+	rightBC_loadValues.push_back(1.0);
+
     outputFileNameWOExt = "output";
     lumpMass = false;
 
@@ -53,12 +61,14 @@ void Configuration::Main_SolveDomain(const string &configName, int serialNumberI
         AssembleGlobalMatrices_DG(assembleMass);
     else
         AssembleGlobalMatrices_CFEM(assembleMass);
-
+	Compute_StaticKaFSystem();
     Process_Output_GlobalMatrices();
 }
 
 void Configuration::Initialize_Configuration()
 {
+	SetBooleans_SolutionMode(solutionMode, sm_needForce, sm_isDynamic);
+
     isDG = (wf_type != cfem);
     weight_BLM_is_velocity = (wf_type == DG_2FUV);
     num_fields = 1;
@@ -84,16 +94,16 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
         double Zl_div_ZlpZr = Zl * ZlpZr_inv, Zr_div_ZlpZr = Zr * ZlpZr_inv;
 
         // sigma* weights
-        shared_sigmaStar_wStarWeights.ss_f_sigmaL = Zl_div_ZlpZr;
-        shared_sigmaStar_wStarWeights.ss_f_sigmaR = Zr_div_ZlpZr;
+        shared_sigmaStar_wStarWeights.ss_f_sigmaL = Zr_div_ZlpZr;
+        shared_sigmaStar_wStarWeights.ss_f_sigmaR = Zl_div_ZlpZr;
         shared_sigmaStar_wStarWeights.ss_f_wR = Zl * Zr * ZlpZr_inv;
         shared_sigmaStar_wStarWeights.ss_f_wL = -shared_sigmaStar_wStarWeights.ss_f_wR;
 
         // Velocity* weights (still not necessarily w weights) /// check this
-        shared_sigmaStar_wStarWeights.ws_f_sigmaL = ZlpZr_inv;
+        shared_sigmaStar_wStarWeights.ws_f_sigmaL = -ZlpZr_inv; // was + on 06/23/2023
         shared_sigmaStar_wStarWeights.ws_f_sigmaR = ZlpZr_inv;
-        shared_sigmaStar_wStarWeights.ws_f_wR = Zl_div_ZlpZr;  // DAMPING
-        shared_sigmaStar_wStarWeights.ws_f_wL = Zr_div_ZlpZr;  // DAMPING
+        shared_sigmaStar_wStarWeights.ws_f_wR = Zr_div_ZlpZr;  // DAMPING
+        shared_sigmaStar_wStarWeights.ws_f_wL = Zl_div_ZlpZr;  // DAMPING
     }
     else
     {
@@ -114,8 +124,8 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
                 eta = etaI * ETilde / hTilde;
             }
             // sigma* = eta * (wR - wL)
-            shared_sigmaStar_wStarWeights.ss_f_wR = -eta;
-            shared_sigmaStar_wStarWeights.ss_f_wL = eta;
+            shared_sigmaStar_wStarWeights.ss_f_wR =  eta; // was - 2023/06/23
+            shared_sigmaStar_wStarWeights.ss_f_wL = -eta; // was + 2023/06/23
         }
         shared_sigmaStar_wStarWeights.ws_f_sigmaL = 0.0;
         shared_sigmaStar_wStarWeights.ws_f_sigmaR = 0.0;
@@ -191,7 +201,7 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
 #endif
 }
 
-bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const OneDimensionalElement &left_e,
+bool Configuration::Compute_InteriorInterface_Matrices(const OneDimensionalElement &left_e,
                                                                         const OneDimensionalElement &right_e,
                                                                         bool insideDomainInterface,
                                                                         DCMATRIX &interfaceK,
@@ -259,6 +269,8 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         B_rightElement(ndof_parent_element);
     double Jacobian_leftElement = left_e.GetJacobian();
     double Jacobian_rightElement = right_e.GetJacobian();
+	double Jacobian_leftElementInv = 1.0 / Jacobian_leftElement;
+	double Jacobian_rightElementInv = 1.0 / Jacobian_rightElement;
 
     for (unsigned int i = 0; i < ndof_parent_element; ++i)
     {
@@ -266,14 +278,14 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
                                                           // at its farthest right point -> Ne_rightNode
         N_rightElement[i] = parentElement.Ne_leftNode[i];
 
-        B_leftElement[i] = Jacobian_leftElement * parentElement.Be_rightNode[i]; // similar to *
-        B_rightElement[i] = Jacobian_rightElement * parentElement.Be_leftNode[i];
+        B_leftElement[i] = Jacobian_leftElementInv * parentElement.Be_rightNode[i]; // similar to *
+        B_rightElement[i] = Jacobian_rightElementInv * parentElement.Be_leftNode[i];
     }
 
     StarW1s *starFactors4LeftSide = &twoSideWeights.side_weights[SDL];
     StarW1s *starFactors4RightSide = &twoSideWeights.side_weights[SDR];
-    // wHat x sigma*_n + epsilon sigmaHat.n (w* - w)
-    //! A: wHat x sigma*_n - w = v for 2F and u for 1F formulations
+    // -wHat x sigma*_n - epsilon sigmaHat.n (w* - w)
+    //! A: -wHat x sigma*_n | w = v for 2F and u for 1F formulations
     for (unsigned int i = 0; i < ndof_parent_element; ++i) // vHat of left element
     {
         /////////////////////////////// vHat from the left element
@@ -282,103 +294,343 @@ bool Configuration::Assemble_InteriorInterface_Matrices_2_Global_System(const On
         // dVhatR_daR -> is the shape of the right element at its left point = N_rigtElement
         double dVhatR_daR = N_rightElement[i];
         // a. Dependencies of Star on Left (sigmaL & velL)
-        NUMBR dSigmaStar_dsigmaL = starFactors4LeftSide->ss_f_sigmaL;
-        NUMBR dSigmaStar_dvelL = starFactors4LeftSide->ss_f_wL;
-        for (int unsigned j = 0; j < ndof_parent_element; ++j)
+        NUMBR dSigmaStarnL_dsigmaL = starFactors4LeftSide->ss_f_sigmaL;
+        NUMBR dSigmaStarnL_dvelL = starFactors4LeftSide->ss_f_wL;
+		NUMBR dSigmaStarnR_dsigmaL = starFactors4RightSide->ss_f_sigmaL;
+		NUMBR dSigmaStarnR_dvelL = starFactors4RightSide->ss_f_wL;
+		
+		for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             double d_sigmaL_daL = B_leftElement[j] * left_e.elementProps.E; // strain at that point times stress
-            NUMBR dSigmaStar_daL = dSigmaStar_dsigmaL * d_sigmaL_daL;
-            interfaceK(i + start_dof_l_w, j + start_dof_l_usigma) += dVhatL_daL * dSigmaStar_daL;
-            interfaceK(i + start_dof_r_w, j + start_dof_l_usigma) += dVhatR_daR * dSigmaStar_daL;
+            NUMBR dSigmaStar_daL = dSigmaStarnL_dsigmaL * d_sigmaL_daL;
+            interfaceK(i + start_dof_l_w, j + start_dof_l_usigma) -= dVhatL_daL * dSigmaStar_daL;
+			dSigmaStar_daL = dSigmaStarnR_dsigmaL * d_sigmaL_daL;
+			interfaceK(i + start_dof_r_w, j + start_dof_l_usigma) -= dVhatR_daR * dSigmaStar_daL;
 
             double d_vell_daL = N_leftElement[j];
-            dSigmaStar_daL = dSigmaStar_dvelL * d_vell_daL;
-            (*matrix4wSlnField)(i + start_dof_l_w, j + start_dof_l_w) += dVhatL_daL * dSigmaStar_daL;
-            (*matrix4wSlnField)(i + start_dof_r_w, j + start_dof_l_w) += dVhatR_daR * dSigmaStar_daL;
+            dSigmaStar_daL = dSigmaStarnL_dvelL * d_vell_daL;
+            (*matrix4wSlnField)(i + start_dof_l_w, j + start_dof_l_w) -= dVhatL_daL * dSigmaStar_daL;
+			dSigmaStar_daL = dSigmaStarnR_dvelL * d_vell_daL;
+			(*matrix4wSlnField)(i + start_dof_r_w, j + start_dof_l_w) -= dVhatR_daR * dSigmaStar_daL;
 //            cout << interfaceK<< endl;
         }
         // b. Dependencies of Star on Right (sigmaR & velR)
-        NUMBR dSigmaStar_dsigmaR = starFactors4LeftSide->ss_f_sigmaR;
-        NUMBR dSigmaStar_dvelR = starFactors4LeftSide->ss_f_wR;
-        for (int unsigned j = 0; j < ndof_parent_element; ++j)
+        NUMBR dSigmaStarnL_dsigmaR = starFactors4LeftSide->ss_f_sigmaR;
+        NUMBR dSigmaStarnL_dvelR = starFactors4LeftSide->ss_f_wR;
+		NUMBR dSigmaStarnR_dsigmaR = starFactors4RightSide->ss_f_sigmaR;
+		NUMBR dSigmaStarnR_dvelR = starFactors4RightSide->ss_f_wR;
+		for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             double d_sigmaR_daR = B_rightElement[j] * right_e.elementProps.E; // strain at that point times stress
-            NUMBR dSigmaStar_daR = dSigmaStar_dsigmaR * d_sigmaR_daR;
-            interfaceK(i + start_dof_l_w, j + start_dof_r_usigma) += dVhatL_daL * dSigmaStar_daR;
-            interfaceK(i + start_dof_r_w, j + start_dof_r_usigma) += dVhatR_daR * dSigmaStar_daR;
+            NUMBR dSigmaStar_daR = dSigmaStarnL_dsigmaR * d_sigmaR_daR;
+            interfaceK(i + start_dof_l_w, j + start_dof_r_usigma) -= dVhatL_daL * dSigmaStar_daR;
+			dSigmaStar_daR = dSigmaStarnR_dsigmaR * d_sigmaR_daR;
+			interfaceK(i + start_dof_r_w, j + start_dof_r_usigma) -= dVhatR_daR * dSigmaStar_daR;
 
             double d_vell_daR = N_rightElement[j];
-            dSigmaStar_daR = dSigmaStar_dvelR * d_vell_daR;
-            (*matrix4wSlnField)(i + start_dof_l_w, j + start_dof_r_w) += dVhatL_daL * dSigmaStar_daR;
-            (*matrix4wSlnField)(i + start_dof_r_w, j + start_dof_r_w) += dVhatR_daR * dSigmaStar_daR;
+            dSigmaStar_daR = dSigmaStarnL_dvelR * d_vell_daR;
+            (*matrix4wSlnField)(i + start_dof_l_w, j + start_dof_r_w) -= dVhatL_daL * dSigmaStar_daR;
+			dSigmaStar_daR = dSigmaStarnR_dvelR * d_vell_daR;
+			(*matrix4wSlnField)(i + start_dof_r_w, j + start_dof_r_w) -= dVhatR_daR * dSigmaStar_daR;
         }
     }
     DB(db << interfaceK << endl);
     //
-    //! B: epsilon (beta) sigmaHat.n (w* - w) [w = v for 2F, 1Fv, = u for 1Fu] -> beta = timeScale only for 1Fu*
+    //! B: -epsilon (beta) sigmaHat.n (w* - w) [w = v for 2F, 1Fv, = u for 1Fu] -> beta = timeScale only for 1Fu*
     if (dg_eps == dg_eps_0)
         return hasC;
+
     for (unsigned int i = 0; i < ndof_parent_element; ++i) // vHat of left element
     {
         /////////////////////////////// sigmaHat from the left element
         double eps_x_d_sigmaL_dot_nL_daL =
-            dg_eps_factor * B_leftElement[i] * left_e.elementProps.E; // strain at that point times stress
+            -dg_eps_factor * B_leftElement[i] * left_e.elementProps.E; // strain at that point times stress
         // nR = -1
         double eps_x_d_sigmaR_dot_nR_daR =
-            -dg_eps_factor * B_rightElement[i] * right_e.elementProps.E; // strain at that point times stress
+            dg_eps_factor * B_rightElement[i] * right_e.elementProps.E; // strain at that point times stress
         // a. dependence of w* - w = vel* - v(or u* - u) on the left element - [sigmaL & velL]
-        NUMBR dwStar_minus_w_dsigmaL = starFactors4LeftSide->ws_f_sigmaL;
-        NUMBR dwStar_minus_w_dwL = starFactors4LeftSide->ws_f_wL - 1.0; // (*) dw*/dwL - dwL/dwL = ws_f_wL - 1
-        for (int unsigned j = 0; j < ndof_parent_element; ++j)
+        NUMBR dwStarL_minus_w_dsigmaL = starFactors4LeftSide->ws_f_sigmaL;
+        NUMBR dwStarL_minus_w_dwL = starFactors4LeftSide->ws_f_wL - 1.0; // (*) dw*/dwL - dwL/dwL = ws_f_wL - 1
+
+		NUMBR dwStarR_minus_w_dsigmaL = starFactors4RightSide->ws_f_sigmaL;
+		NUMBR dwStarR_minus_w_dwL = starFactors4RightSide->ws_f_wL; // (*) dw*/dwL - dwL/dwL = ws_f_wL - 1
+		for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             // sigma solutions
             double dSigmaL_daL = B_leftElement[j] * left_e.elementProps.E;
-            NUMBR dwStar_minus_w_daL = dwStar_minus_w_dsigmaL * dSigmaL_daL;
-            // sigmaHatL.nL * (dw*/da)_left: dependency of w* on sigmaL
+			// sigmaHatL.nL * (dw*/da)_left: dependency of w* on sigmaL
+			NUMBR dwStar_minus_w_daL = dwStarL_minus_w_dsigmaL * dSigmaL_daL;
             interfaceK(i + start_dof_l_usigma, j + start_dof_l_usigma) +=
                 eps_x_d_sigmaL_dot_nL_daL * dwStar_minus_w_daL;
             // sigmaHatR.nR * (dW*/da)_left: dependency of w* on sigmaL
-            interfaceK(i + start_dof_r_usigma, j + start_dof_l_usigma) +=
+			dwStar_minus_w_daL = dwStarR_minus_w_dsigmaL * dSigmaL_daL;
+			interfaceK(i + start_dof_r_usigma, j + start_dof_l_usigma) +=
                 eps_x_d_sigmaR_dot_nR_daR * dwStar_minus_w_daL;
 
             // w (u or v) solutions solutions
             double d_wL_daL = N_leftElement[j];
-            dwStar_minus_w_daL = dwStar_minus_w_dwL * d_wL_daL;
+            dwStar_minus_w_daL = dwStarL_minus_w_dwL * d_wL_daL;
             // sigmaHatL.nL * (dw*/da)_left: dependency of w* on wL
             (*matrix4wSlnField)(i + start_dof_l_usigma, j + start_dof_l_w) +=
                 eps_x_d_sigmaL_dot_nL_daL * dwStar_minus_w_daL;
             // sigmaHatR.nR * (dW*/da)_left: dependency of w* on wR
-            (*matrix4wSlnField)(i + start_dof_r_usigma, j + start_dof_l_w) +=
+			dwStar_minus_w_daL = dwStarR_minus_w_dwL * d_wL_daL;
+			(*matrix4wSlnField)(i + start_dof_r_usigma, j + start_dof_l_w) +=
                 eps_x_d_sigmaR_dot_nR_daR * dwStar_minus_w_daL;
         }
 
         // b. dependence of w* = vel*(or u*) on the right element - [sigmaR & velR]
-        NUMBR dwStar_minus_w_dsigmaR = starFactors4LeftSide->ws_f_sigmaR;
-        NUMBR dwStar_minus_w_dwR = starFactors4LeftSide->ws_f_wR - 1.0; // see (*) above
-        for (int unsigned j = 0; j < ndof_parent_element; ++j)
+        NUMBR dwStarL_minus_w_dsigmaR = starFactors4LeftSide->ws_f_sigmaR;
+        NUMBR dwStarL_minus_w_dwR = starFactors4LeftSide->ws_f_wR; // see (*) above
+
+		NUMBR dwStarR_minus_w_dsigmaR = starFactors4RightSide->ws_f_sigmaR;
+		NUMBR dwStarR_minus_w_dwR = starFactors4RightSide->ws_f_wR - 1.0; // see (*) above
+		for (int unsigned j = 0; j < ndof_parent_element; ++j)
         {
             // sigma solutions
             double dSigmaR_daR = B_rightElement[j] * right_e.elementProps.E;
-            NUMBR dwStar_minus_w_daR = dwStar_minus_w_dsigmaR * dSigmaR_daR;
+            NUMBR dwStar_minus_w_daR = dwStarL_minus_w_dsigmaR * dSigmaR_daR;
             // sigmaHatL.nL * (dw*/da)_right: dependency of w* on sigmaL
             interfaceK(i + start_dof_l_usigma, j + start_dof_r_usigma) +=
                 eps_x_d_sigmaL_dot_nL_daL * dwStar_minus_w_daR;
             // sigmaHatR.nR * (dW*/da)_left: dependency of w* on sigmaL
-            interfaceK(i + start_dof_r_usigma, j + start_dof_r_usigma) +=
+			dwStar_minus_w_daR = dwStarR_minus_w_dsigmaR * dSigmaR_daR;
+			interfaceK(i + start_dof_r_usigma, j + start_dof_r_usigma) +=
                 eps_x_d_sigmaR_dot_nR_daR * dwStar_minus_w_daR;
 
             // w (u or v) solutions solutions
             double d_wR_daR = N_rightElement[j];
-            dwStar_minus_w_daR = dwStar_minus_w_dwR * d_wR_daR;
+            dwStar_minus_w_daR = dwStarL_minus_w_dwR * d_wR_daR;
             // sigmaHatL.nL * (dw*/da)_left: dependency of w* on wL
             (*matrix4wSlnField)(i + start_dof_l_usigma, j + start_dof_r_w) +=
                 eps_x_d_sigmaL_dot_nL_daL * dwStar_minus_w_daR;
             // sigmaHatR.nR * (dW*/da)_left: dependency of w* on wR
-            (*matrix4wSlnField)(i + start_dof_r_usigma, j + start_dof_r_w) +=
+			dwStar_minus_w_daR = dwStarR_minus_w_dwR * d_wR_daR;
+			(*matrix4wSlnField)(i + start_dof_r_usigma, j + start_dof_r_w) +=
                 eps_x_d_sigmaR_dot_nR_daR * dwStar_minus_w_daR;
         }
     }
 	return hasC;
+}
+
+bool Configuration::Compute_DirichletBoundaryInterface_Matrices(const OneDimensionalElement & e, bool leftDomainInterface, DCMATRIX & interfaceK, DCMATRIX & interfaceC) const
+{
+	// sample numbers are provided for p = 2 -> ndof_parent_element = 3
+	unsigned int start_dof_usigma = 0;
+	unsigned int start_dof_w; // w stands for u or v in the formulation
+	unsigned int size_interfaceMatrices = ndof_element;
+
+	// matrix4wSlnField -> the stiffness terms that have velocity solution field ->
+	//		for 1Fv* this will be interfaceC
+	//		for other formulations 1Fu* and 2D this will be interfaceK
+	interfaceK.resize(size_interfaceMatrices, size_interfaceMatrices);
+	ZEROMAT(interfaceK, size_interfaceMatrices, size_interfaceMatrices);
+	DCMATRIX *matrix4wSlnField;
+	matrix4wSlnField = &interfaceK;
+	bool hasC = false;
+
+	double dg_eps_factor = (double)dg_eps;
+	if (wf_type == DG_2FUV) // 2-field formulation
+		start_dof_w = ndof_parent_element;
+	else
+	{
+		start_dof_w = 0;
+
+		if (wf_type == DG_1F_vStar)
+		{
+			interfaceC.resize(size_interfaceMatrices, size_interfaceMatrices);
+			ZEROMAT(interfaceC, size_interfaceMatrices, size_interfaceMatrices);
+			matrix4wSlnField = &interfaceC;
+			hasC = true;
+			// time scale of the element is needed
+			double beta_timeScale = e.elementProps.time_e;
+			dg_eps_factor *= beta_timeScale;
+		}
+	}
+
+	bool etaBZero = true;
+	double etaFactor = 0.0;
+	if (etaB > 1e-15)
+	{
+		if (IsWVelocity())
+			etaFactor = etaB * 0.5 * e.elementProps.Z;
+		else // w is u -> elliptic start
+			etaFactor = etaB * e.elementProps.E/ e.elementProps.hE;
+		etaBZero = false;
+	}
+
+	// N: shape: actual solution
+	// B: dN/dx = B_xi * dx/dxi
+	VECTOR N_lement(ndof_parent_element), B_Element(ndof_parent_element);
+	double Jacobian_Element = e.GetJacobian();
+	double n = 1.0;
+	if (leftDomainInterface)
+	{
+		n = -1.0;
+		for (unsigned int i = 0; i < ndof_parent_element; ++i)
+		{
+			N_lement[i] = parentElement.Ne_leftNode[i];
+			B_Element[i] = parentElement.Be_leftNode[i] / Jacobian_Element;
+		}
+	}
+	else
+	{
+		for (unsigned int i = 0; i < ndof_parent_element; ++i)
+		{
+			N_lement[i] = parentElement.Ne_rightNode[i];
+			B_Element[i] = parentElement.Be_rightNode[i] / Jacobian_Element;
+		}
+	}
+
+	// -wHat x sigma*_n - epsF * sigmaHat.n (wBar - w)
+
+	//! A: -wHat x sigma*_n | w = v for 2F and u for 1F formulations
+	//	sigma*n = sigma . n + etaFactor(wBar - w) ->
+	//		A1: -wHat	x	sigma.n
+	//		A2:	 wHat	x	etaFactor * w
+	//! B: epsF * sigmaHat.n * w 
+	for (unsigned int i = 0; i < ndof_parent_element; ++i)
+	{
+		double dVhat_da = N_lement[i];
+		for (int unsigned j = 0; j < ndof_parent_element; ++j)
+		{
+			double d_sigma_da = B_Element[j] * e.elementProps.E; // strain at that point times stress
+			NUMBR dSigmaStar_da = d_sigma_da * n; // sigma*n -> sigma . n  part
+			double tmp = dVhat_da * dSigmaStar_da;
+			// A1
+			interfaceK(i + start_dof_w, j + start_dof_usigma) -= tmp;
+			// B
+			if (dg_eps != dg_eps_0)
+				(*matrix4wSlnField)(j + start_dof_usigma, i + start_dof_w) += dg_eps_factor * tmp;
+
+			// A2
+			if (etaBZero == false)
+				(*matrix4wSlnField)(i + start_dof_w, j + start_dof_w) += dVhat_da * etaFactor * N_lement[j];
+		}
+	}
+	return hasC;
+}
+
+void Configuration::Compute_DirichletBoundaryInterface_ForceVector(const OneDimensionalElement &e,
+	bool leftDomainInterface, double wBar, DCVECTOR& F) const
+{
+	// sample numbers are provided for p = 2 -> ndof_parent_element = 3
+	unsigned int start_dof_usigma = 0;
+	unsigned int start_dof_w; // w stands for u or v in the formulation
+	unsigned int size_interfaceMatrices = ndof_element;
+
+	ZEROVEC(F, size_interfaceMatrices);
+	double dg_eps_factor = (double)dg_eps;
+	if (wf_type == DG_2FUV) // 2-field formulation
+		start_dof_w = ndof_parent_element;
+	else
+	{
+		start_dof_w = 0;
+
+		if (wf_type == DG_1F_vStar)
+		{
+			// time scale of the element is needed
+			double beta_timeScale = e.elementProps.time_e;
+			dg_eps_factor *= beta_timeScale;
+		}
+	}
+
+	bool etaBZero = true;
+	double etaFactor = 0.0;
+	if (etaB > 1e-15)
+	{
+		if (IsWVelocity())
+			etaFactor = etaB * 0.5 * e.elementProps.Z;
+		else // w is u -> elliptic start
+			etaFactor = etaB * e.elementProps.E / e.elementProps.hE;
+		etaBZero = false;
+	}
+
+	// N: shape: actual solution
+	// B: dN/dx = B_xi * dx/dxi
+	VECTOR N_lement(ndof_parent_element), B_Element(ndof_parent_element);
+	double Jacobian_Element = e.GetJacobian();
+	double n = 1.0;
+	if (leftDomainInterface)
+	{
+		n = -1.0;
+		for (unsigned int i = 0; i < ndof_parent_element; ++i)
+		{
+			N_lement[i] = parentElement.Ne_leftNode[i];
+			B_Element[i] = parentElement.Be_leftNode[i] / Jacobian_Element;
+		}
+	}
+	else
+	{
+		for (unsigned int i = 0; i < ndof_parent_element; ++i)
+		{
+			N_lement[i] = parentElement.Ne_rightNode[i];
+			B_Element[i] = parentElement.Be_rightNode[i] / Jacobian_Element;
+		}
+	}
+
+	// -wHat x sigma*_n - epsF * sigmaHat.n (wBar - w)
+
+	//! A: -wHat x sigma*_n | w = v for 2F and u for 1F formulations
+	//	sigma*n = sigma . n + etaFactor(wBar - w)			-> No Force
+	//		A1: -wHat	x	sigma.n							
+	//		A2:	-wHat	x	etaFactor * (wBar - w)			-> wHat	x	etaFactor * wBar 
+	//! B: -epsF * sigmaHat.n * (wBar - w)					-> epsF * sigmaHat.n *  wBar 
+	// B
+	if (dg_eps != dg_eps_0)
+	{
+		for (unsigned int i = 0; i < ndof_parent_element; ++i) // vHat of left element
+		{
+			double d_sigma_da = B_Element[i] * e.elementProps.E; // strain at that point times stress
+			double dSigmaStar_da = d_sigma_da * n; // sigma*n -> sigma . n  part
+			F(i + start_dof_usigma) += dg_eps_factor * dSigmaStar_da * wBar;
+		}
+	}
+	// A2
+	if (etaBZero == false)
+	{
+		for (unsigned int i = 0; i < ndof_parent_element; ++i) // vHat of left element
+		{
+			double dVhat_da = N_lement[i];
+			F(i + start_dof_w) += dVhat_da * etaFactor * wBar;
+		}
+	}
+}
+
+void Configuration::Compute_NeumannBoundaryInterface_ForceVector(const OneDimensionalElement &e,
+	bool leftDomainInterface, double sigmanBarn, DCVECTOR& F) const
+{
+	// sample numbers are provided for p = 2 -> ndof_parent_element = 3
+	unsigned int start_dof_usigma = 0;
+	unsigned int start_dof_w = 0; // w stands for u or v in the formulation
+	if (wf_type == DG_2FUV) // 2-field formulation
+		start_dof_w = ndof_parent_element;
+
+	// N: shape: actual solution, B not needed
+	VECTOR N_lement(ndof_parent_element);
+	double Jacobian_Element = e.GetJacobian();
+	//double n = 1.0;
+	if (leftDomainInterface)
+	{
+		//n = -1.0;
+		for (unsigned int i = 0; i < ndof_parent_element; ++i)
+			N_lement[i] = parentElement.Ne_leftNode[i];
+	}
+	else
+	{
+		for (unsigned int i = 0; i < ndof_parent_element; ++i)
+			N_lement[i] = parentElement.Ne_rightNode[i];
+	}
+
+	// wHat x sigmaBarn
+	for (unsigned int i = 0; i < ndof_parent_element; ++i) // vHat of left element
+		F(i + start_dof_w) = N_lement[i] * sigmanBarn;
+}
+
+void Configuration::Compute_left_right_prescribedVals(double time, double & valLeft, double & valRight)
+{
+	valLeft = ComputeLoad(time, leftBC_loadNumber, leftBC_loadValues);
+	valRight = ComputeLoad(time, rightBC_loadNumber, rightBC_loadValues);
 }
 
 bool Configuration::HasNonZeroDampingMatrix() const
@@ -668,8 +920,6 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 
     /// Step A:  Interior of the elments
     unsigned int st;
-//z    if (0)
-//z    {
     for (unsigned int ei = 0; ei < num_elements; ++ei)
     {
         st = element_start_dof[ei];
@@ -707,16 +957,77 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
     /// Step B:  Inter-element facets
     bool doesHaveBlochOrPeriodicBC = ((leftBC == bct_PeriodicOrBloch) || (rightBC == bct_PeriodicOrBloch));
 
-    if ((leftBC == bct_Dirichlet) || (leftBC == bct_Characteristics))
+    if (leftBC == bct_Characteristics)
         THROW("left BC has stiffness contributions not taken care of\n");
-    if ((rightBC == bct_Dirichlet) || (rightBC == bct_Characteristics))
+    if (rightBC == bct_Characteristics)
         THROW("right BC has stiffness contributions not taken care of\n");
+
+	unsigned int en = num_elements - 1;
+
+	// Dirichlet & Neumman BC Initialization and  K / C
+	e_DirichletBCs.clear();
+	leftDomainInterface_DirichletBCs.clear();
+	eIndex_DirichletBCs.clear();
+
+	e_NeumannBCs.clear();
+	leftDomainInterface_NeumannBCs.clear();
+	eIndex_NeumannBCs.clear();
+
+	if (leftBC == bct_Dirichlet)
+	{
+		e_DirichletBCs.push_back(&elements[0]);
+		leftDomainInterface_DirichletBCs.push_back(true);
+		eIndex_DirichletBCs.push_back(0);
+	}
+	else if (leftBC == bct_Neumann)
+	{
+		e_NeumannBCs.push_back(&elements[0]);
+		leftDomainInterface_NeumannBCs.push_back(true);
+		eIndex_NeumannBCs.push_back(0);
+	}
+	if (rightBC == bct_Dirichlet)
+	{
+		e_DirichletBCs.push_back(&elements[en]);
+		leftDomainInterface_DirichletBCs.push_back(false);
+		eIndex_DirichletBCs.push_back(en);
+	}
+	else if (rightBC == bct_Neumann)
+	{
+		e_NeumannBCs.push_back(&elements[en]);
+		leftDomainInterface_NeumannBCs.push_back(false);
+		eIndex_NeumannBCs.push_back(en);
+	}
+	num_DirichletBCs = e_DirichletBCs.size();
+	num_NeumannBCs = e_NeumannBCs.size();
+	for (unsigned int dbci = 0; dbci < num_DirichletBCs; ++dbci)
+	{
+		DCMATRIX interfaceK, interfaceC;
+		ZEROMAT(interfaceK, ndof_element, ndof_element);
+		ZEROMAT(interfaceC, ndof_element, ndof_element);
+		bool hasC = Compute_DirichletBoundaryInterface_Matrices(*(e_DirichletBCs[dbci]), leftDomainInterface_DirichletBCs[dbci], interfaceK, interfaceC);
+
+		unsigned int pos = eIndex_DirichletBCs[dbci];
+		unsigned int st = element_start_dof[pos];
+
+		for (unsigned int i = 0; i < ndof_element; ++i)
+		{
+			for (unsigned int j = 0; j < ndof_element; ++j)
+				globalK(i + st, j + st) += interfaceK(i, j);
+		}
+		if (hasC)
+		{
+			for (unsigned int i = 0; i < ndof_element; ++i)
+			{
+				for (unsigned int j = 0; j < ndof_element; ++j)
+					globalC(i + st, j + st) += interfaceC(i, j);
+			}
+		}
+	}
 
     // n: number of elements -> n + 1 interfaces
     // I0 eInterior0 I1 eInterior1 ... I(n-1) eInterior(n-1) In
     // interior interfaces are from 1 to n -1
     st = 1;
-    unsigned int en = num_elements - 1;
     if (doesHaveBlochOrPeriodicBC)
         st = 0;
     unsigned int interface_dof = 2 * ndof_element;
@@ -740,9 +1051,10 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
         right_e_dof_st = element_start_dof[interfacei];
         right_ePtr = &elements[interfacei];
         DCMATRIX interfaceK, interfaceC;
-        ZEROMAT(interfaceK,ndof_element,ndof_element);
-        ZEROMAT(interfaceC,ndof_element,ndof_element);
-        bool hasC = Assemble_InteriorInterface_Matrices_2_Global_System(*left_ePtr, *right_ePtr, insideDomainInterface,
+		ZEROMAT(interfaceK, interface_dof, interface_dof);
+		ZEROMAT(interfaceC, interface_dof, interface_dof);
+
+        bool hasC = Compute_InteriorInterface_Matrices(*left_ePtr, *right_ePtr, insideDomainInterface,
                                                                         interfaceK, interfaceC);
 
         /// assemble K
@@ -915,6 +1227,10 @@ void Configuration::Read_ConfigFile(const string& configName)
         {
             READ_NBOOL(in, buf, lumpMass);
         }
+		else if (buf == "solutionMode")
+		{
+			in >> solutionMode;
+		}
 		else if (buf == "wf_type")
 		{
 			in >> wf_type;
@@ -956,6 +1272,22 @@ void Configuration::Read_ConfigFile(const string& configName)
 		else if (buf == "rightBC")
 		{
 			in >> rightBC;
+		}
+		else if (buf == "leftBC_loadNumber")
+		{
+			READ_NINTEGER(in, buf, leftBC_loadNumber);
+		}
+		else if (buf == "rightBC_loadNumber")
+		{
+			READ_NINTEGER(in, buf, rightBC_loadNumber);
+		}
+		else if (buf == "leftBC_loadValues")
+		{
+			ReadVectorDouble(in, leftBC_loadValues);
+		}
+		else if (buf == "rightBC_loadValues")
+		{
+			ReadVectorDouble(in, rightBC_loadValues);
 		}
 		else if (buf == "outputFileNameWOExt")
         {
@@ -1055,6 +1387,64 @@ void Configuration::Read_ConfigFile(const string& configName)
     }
 }
 
+void Configuration::Compute_StaticKaFSystem()
+{
+	if (solutionMode != smt_MatsF_Static)
+		return;
+	double valLeft, valRight;
+	Compute_left_right_prescribedVals(0.0, valLeft, valRight);
+	ZEROVEC(globalF, nfdof_domain);
+
+	// Dirichlet, Neumann BCs
+	if (isDG)
+	{
+		// Dirichlet BC
+		for (unsigned int dbci = 0; dbci < num_DirichletBCs; ++dbci)
+		{
+			DCVECTOR interfaceF;
+			bool leftDomainInterface = (dbci == 0);
+			double wBar = valRight;
+			if (leftDomainInterface)
+				wBar = valLeft;
+			Compute_DirichletBoundaryInterface_ForceVector(*(e_DirichletBCs[dbci]),
+				leftDomainInterface, wBar, interfaceF);
+
+			unsigned int pos = eIndex_DirichletBCs[dbci];
+			unsigned int st = element_start_dof[pos];
+
+			for (unsigned int i = 0; i < ndof_element; ++i)
+				globalF(i + st) += interfaceF(i);
+		}
+		// Neumann BC
+		for (unsigned int nbci = 0; nbci < num_NeumannBCs; ++nbci)
+		{
+			DCVECTOR interfaceF;
+			bool leftDomainInterface = (nbci == 0);
+			double sigmaBarn = valRight;
+			if (leftDomainInterface)
+				sigmaBarn = valLeft;
+			Compute_NeumannBoundaryInterface_ForceVector(*(e_NeumannBCs[nbci]),
+				leftDomainInterface, sigmaBarn, interfaceF);
+
+			unsigned int pos = eIndex_NeumannBCs[nbci];
+			unsigned int st = element_start_dof[pos];
+
+			for (unsigned int i = 0; i < ndof_element; ++i)
+				globalF(i + st) += interfaceF(i);
+		}
+	}
+	// if it has interior source term, we'll add the computation here
+
+	// system solution
+	ZEROVEC(global_a, nfdof_domain);
+	for (unsigned int i = 0; i < nfdof_domain; ++i)
+		global_a(i) = globalF(i);
+	DCMATRIX globalK_cpy;
+	ZEROMAT(globalK_cpy, nfdof_domain, nfdof_domain);
+	globalK_cpy = globalK;
+	LUsolve(globalK_cpy, global_a);
+}
+
 void Configuration::Process_Output_GlobalMatrices()
 {
 	string str_ser;
@@ -1070,24 +1460,33 @@ void Configuration::Process_Output_GlobalMatrices()
     out << "b_hasNonZeroDampingMatrix\n" << b_hasNonZeroDampingMatrix << '\n';
     out << "C\n" << globalC << '\n';
     out << "C.sum\n" << globalC.sum() << '\n';
-
-    //Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
-    //ges.compute(globalM,globalK);
-//
-    //out << "eigenvalues\n" << ges.eigenvalues() << '\n';
-//
-    //Eigen::EigenSolver<Eigen::MatrixXd> es;
-//
-    //es.compute (globalM.inverse()*globalK, /* computeEigenvectors = */ false);
-//
-    //out << "eigenvalues\n" << es.eigenvalues() << '\n';
-
+	if (solutionMode == smt_MatsF_Static)
+	{
+		out << "globalF\n" << globalF << '\n';
+		out << "global_a\n" << global_a << '\n';
+	}
+	if (solutionMode == smt_Mats_OnlyNaturalMode)
+	{
+		//Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
+		//ges.compute(globalM,globalK);
+	//
+		//out << "eigenvalues\n" << ges.eigenvalues() << '\n';
+	//
+		//Eigen::EigenSolver<Eigen::MatrixXd> es;
+	//
+		//es.compute (globalM.inverse()*globalK, /* computeEigenvectors = */ false);
+	//
+		//out << "eigenvalues\n" << es.eigenvalues() << '\n';
+	}
+#if USE_COMPLEX
     Eigen::ComplexEigenSolver<Eigen::MatrixXd> ces;
 
     ces.compute (globalM.inverse()*globalK);
 
     out << "eigenvalues\n" << ces.eigenvalues() << '\n';
+#endif
 }
+
 
 StarW1s::StarW1s()
 {
@@ -1100,4 +1499,13 @@ StarW1s::StarW1s()
     ws_f_wL = 0.0;
     ws_f_wR = 0.0;
   
+}
+
+double ComputeLoad(double t, int loadNumber, const vector<double>& loadValues)
+{
+	if (loadNumber == 0)
+		return loadValues[0];
+	if (loadNumber == 1)
+		return loadValues[0] + loadValues[1] * t;
+	return 0.0;
 }

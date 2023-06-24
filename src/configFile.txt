@@ -1,15 +1,30 @@
 {
-# polynomidal order for elements
+# polynomidal orer for elements
 polyOrder 
-2
+1
 
 lumpMass 
 0
 
+
+# solution mode:
+# matrix only
+#		Mats_Only	 			// M, C, K computed
+#		Mats_OnlyNaturalMode	// (-M omega^2 + i omega C + K) a  = 0 is solved for omega
+#		Mats_OnlyBloch,		 	// option for Bloch mode analysis 
+# matrix and RHS F
+#		MatsF_Static			// Ka = F
+#		MatsF_Dynamic			// Ma'' + Ca' + Ka = F is solved dynamically - time stepping option should be provided separately
+#		MatsF_Helmholtz			// (-M omega^2 + i omega C + K) a = F
+solutionMode
+#Mats_Only
+MatsF_Static
+
 # cfem	DG_2FUV	DG_1F_vStar	DG_1F_uStar
 wf_type
 #cfem
-DG_1F_vStar
+#DG_2FUV
+DG_1F_uStar
 
 isBlochModeAnalysis
 0
@@ -20,33 +35,57 @@ isHelmholtz
 omega
 1.0
 
-# Riemann  Central	Alternating_sL	Alternating_sR
+# Riemann	Central	Alternating_sL	Alternating_sR
 sOption
-Central
 #Riemann
+Central
 
 # -1	0	1
+# -1 -> SIPG (needs large eta)
+#  1 -> NIPG (needs eta > 0)
+#  0 -> IIPG (large eta?) Incomplete ... (Dawson, Sun, Wheeler 2004)
 dg_eps
 1
+#0
 
 # factor(etaI)[u][u] penalty term inside the domain
 etaI
-0.0
-#1.0
+1.0
+#0.0
 
 # factor(etaB)[u][u] penalty term on Dirichlet BC
 etaB
-0.0
-#1.0
+1.0
+#0.0
 
 #   Dirichlet	Neumann		Characteristics		Unspecified		Symmetric		AntiSymmetric	PeriodicOrBloch
 # only Neumann implemented; PeriodicOrBloch entry here seems sufficient and isBlochModeAnalysis above may be removed (TODO)
 leftBC
-Neumann
+Dirichlet
+#Neumann
+
 
 rightBC
-Neumann
+Dirichlet
+#Neumann
 
+# load Numbers: 0	-> constant   loadValue[0], 1 -> linear in t  loadValue[0] + loadValue[1] * t, ....
+
+leftBC_loadNumber
+0
+
+leftBC_loadValues
+{
+0.0
+}
+
+rightBC_loadNumber
+0
+
+rightBC_loadValues
+{
+1.0
+}
 
 # output file name for K, M, C
 outputFileNameWOExt

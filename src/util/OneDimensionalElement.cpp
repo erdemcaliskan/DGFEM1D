@@ -72,7 +72,7 @@ void OneDimensionalParentElement::Initialize(unsigned int polyOrderIn, bool lump
             double fact = 1.0 / 3.0;
             mpe[0][0] = mpe[1][1] = fact;
             mpe[0][1] = mpe[1][0] = 0.0;
-            mpe[2][2] = 2.0 * fact;
+            mpe[2][2] = 4.0 * fact; // 2023/06/24 was 2.0 * fact;
             mpe[0][2] = mpe[2][0] = mpe[1][2] = mpe[2][1] = 0.0;
         }
         // stiffness

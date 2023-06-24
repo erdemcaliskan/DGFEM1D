@@ -42,6 +42,7 @@ class Configuration
     // whether we want the mass-lumpting option or not
     bool lumpMass;
 
+	SolutionModeT	solutionMode;
     WeakFormulationType wf_type;
     // star options for DG method
     StarOption sOption;
@@ -62,6 +63,8 @@ class Configuration
     // element
     unsigned int field_pos_weight_BLM;
     BoundaryConditionT leftBC, rightBC;
+	int leftBC_loadNumber, rightBC_loadNumber;
+	vector<double> leftBC_loadValues, rightBC_loadValues;
     bool isBlochModeAnalysis;
     Dcomplex gamma, gamma_inv; // gamma = exp(i k L) // k wavenumber, L is domain
                                // length -> needed for Bloch analysis
@@ -118,10 +121,29 @@ class Configuration
     vector<int> element_start_dof;
     vector<int> element_end_dof;
 
-    /////////////////////////////////// Global, K, M, C
+	///////////////////////////////////
+	// Dirichlet BC
+	vector<const OneDimensionalElement*> e_DirichletBCs;
+	vector<bool> leftDomainInterface_DirichletBCs;
+	vector<int> eIndex_DirichletBCs;
+	unsigned int num_DirichletBCs;
+
+	// Dirichlet BC
+	vector<const OneDimensionalElement*> e_NeumannBCs;
+	vector<bool> leftDomainInterface_NeumannBCs;
+	vector<int> eIndex_NeumannBCs;
+	unsigned int num_NeumannBCs;
+
+	/////////////////////////////////// Global, K, M, C
     // stores whether we need a damping matrix
     bool b_hasNonZeroDampingMatrix;
     DCMATRIX globalK, globalC, globalM;
+	DCVECTOR globalF;
+	// Ka = F (or a unknown for step n+1)
+	DCVECTOR global_a; 
+
+	// solution mode booleans
+	bool sm_needForce, sm_isDynamic;
 
   private:
     // functions called in Main_SolveDomain
@@ -132,7 +154,8 @@ class Configuration
     void AssembleGlobalMatrices_DG(bool assembleMassIn);
     void AssembleGlobalMatrices_CFEM(bool assembleMassIn);
     // I think everything can be solved here, except Bloch analysis that should be written to a file for Ali
-    void Process_Output_GlobalMatrices();
+	void Compute_StaticKaFSystem();
+	void Process_Output_GlobalMatrices();
 
     /////////////////////////////////////////////////////
 
@@ -161,10 +184,29 @@ class Configuration
 
     // (configuration) is not changing itself
     // return true if it has nonzero C
-    bool Assemble_InteriorInterface_Matrices_2_Global_System(const OneDimensionalElement &left_e,
+    bool Compute_InteriorInterface_Matrices(const OneDimensionalElement &left_e,
                                                              const OneDimensionalElement &right_e,
                                                              bool insideDomainInterface, DCMATRIX &interfaceK,
                                                              DCMATRIX &interfaceC) const;
+	///////////// Dirichlet BC
+	// K, C
+	bool Compute_DirichletBoundaryInterface_Matrices(const OneDimensionalElement &e,
+		bool leftDomainInterface, DCMATRIX &interfaceK, DCMATRIX &interfaceC) const;
+
+	// F
+	// wBar = prescribed v for 2F and 1Fv* and prescribed u for 1Fu*
+	void Compute_DirichletBoundaryInterface_ForceVector(const OneDimensionalElement &e,
+		bool leftDomainInterface, double wBar, DCVECTOR& F) const;
+
+	///////////// Neumann BC
+	// sigmaBarn: prescribed traction = sigmabar . n
+	void Compute_NeumannBoundaryInterface_ForceVector(const OneDimensionalElement &e,
+		bool leftDomainInterface, double sigmanBarn, DCVECTOR& F) const;
+
+	// Force calculations
+	void Compute_left_right_prescribedVals(double time, double& valLeft, double& valRight);
 };
+
+double ComputeLoad(double t, int loadNumber, const vector<double>& loadValues);
 
 #endif

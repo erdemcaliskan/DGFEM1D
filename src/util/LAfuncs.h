@@ -4,18 +4,22 @@
 #include "globalMacros.h"
 #include <iostream>
 
+class VECTOR;
 class MATRIX;
 #if USE_COMPLEX
 #include <Eigen/Dense>
 typedef Eigen::MatrixXcd DCMATRIX;
-#define ZEROMAT(x)     x.setConstant(0.0)
+#define ZEROMAT(x, n, m)     x.setConstant(0.0)
+#define ZEROVEC(x, n)     x.setConstant(0.0) //???
 #else
-#include <Eigen/Dense>
-//typedef MATRIX DCMATRIX; // 
+//#include <Eigen/Dense>
+typedef MATRIX DCMATRIX;
+typedef VECTOR DCVECTOR;
 //typedef Eigen::MatrixXcd DCMATRIX;
 //typedef Eigen::MatrixXf DCMATRIX;
-typedef Eigen::MatrixXd DCMATRIX;
-#define ZEROMAT(x,n,m) x.setConstant(0.0) //x = 0.0 // Eigen::MatrixXd::Zero(n,m)   // Eigen::MatrixXf::Zero(n,m) //  Eigen::MatrixXcd::Zero(n,m)  //
+//typedef Eigen::MatrixXd DCMATRIX;
+#define ZEROMAT(x, n, m) { x.resize(n, m); x = 0.0;}
+#define ZEROVEC(x, n) { x.resize(n); x = 0.0;}
 #endif
 
 
@@ -91,11 +95,13 @@ class VECTOR
     // the first version can change the value and return the component of the
     // VECTOR at position i. A use of this is for example in a(10) = 15; (LHS)
     double &operator[](unsigned int i);
-    // second option is a "const" function. Adding const at the end of the
+	double &operator()(unsigned int i);
+	// second option is a "const" function. Adding const at the end of the
     // function name ensures that none of class members (vector<double> vec
     // herein) can be changed. Query functions are often suggested to be written
     // as const functions to prevent accidental changes to class data
     double operator[](unsigned int i) const;
+	double operator()(unsigned int i) const;
 
     // This is another operator overloading that enables an = sign whose RHS is a
     // double. It enables setting the value for the entire VECTOR as we typically
