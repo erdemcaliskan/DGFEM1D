@@ -1436,6 +1436,7 @@ void Configuration::Compute_StaticKaFSystem()
 	// if it has interior source term, we'll add the computation here
 
 	// system solution
+#if VCPP
 	ZEROVEC(global_a, nfdof_domain);
 	for (unsigned int i = 0; i < nfdof_domain; ++i)
 		global_a(i) = globalF(i);
@@ -1443,6 +1444,9 @@ void Configuration::Compute_StaticKaFSystem()
 	ZEROMAT(globalK_cpy, nfdof_domain, nfdof_domain);
 	globalK_cpy = globalK;
 	LUsolve(globalK_cpy, global_a);
+#else
+    // eigen-based Ka = F --- you may need to have 3 versions of DCVECTOR 1 VCPP, 2 otherwise
+#endif
 }
 
 void Configuration::Process_Output_GlobalMatrices()
@@ -1467,8 +1471,19 @@ void Configuration::Process_Output_GlobalMatrices()
 	}
 	if (solutionMode == smt_Mats_OnlyNaturalMode)
 	{
-		//Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
-		//ges.compute(globalM,globalK);
+#if !VCPP       
+#if USE_COMPLEX
+		Eigen::ComplexEigenSolver<Eigen::MatrixXcd> ces;
+        ces.compute (globalM.inverse()*globalK, /* computeEigenvectors = */ false);
+        // print stuff
+        out << "eigenvalues\n" << ces.eigenvalues() << '\n';
+#else
+		Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
+        ges.compute (globalK, globalM);
+        // print stuff
+        out << "eigenvalues\n" << ges.eigenvalues() << '\n';
+#endif
+#endif
 	//
 		//out << "eigenvalues\n" << ges.eigenvalues() << '\n';
 	//
@@ -1479,7 +1494,7 @@ void Configuration::Process_Output_GlobalMatrices()
 		//out << "eigenvalues\n" << es.eigenvalues() << '\n';
 	}
 #if USE_COMPLEX
-    Eigen::ComplexEigenSolver<Eigen::MatrixXd> ces;
+    Eigen::ComplexEigenSolver<Eigen::MatrixXcd> ces;
 
     ces.compute (globalM.inverse()*globalK);
 

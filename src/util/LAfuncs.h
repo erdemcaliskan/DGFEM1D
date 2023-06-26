@@ -6,22 +6,30 @@
 
 class VECTOR;
 class MATRIX;
+
+
+typedef VECTOR DCVECTOR;
+#if VCPP
+typedef MATRIX DCMATRIX;
+//typedef Eigen::MatrixXcd DCMATRIX;
+//typedef Eigen::MatrixXf DCMATRIX;
+//typedef Eigen::MatrixXd DCMATRIX;
+#define ZEROMAT(x, n, m) { x.resize(n, m); x = 0.0;}
+#define ZEROVEC(x, n) { x.resize(n); x = 0.0;}
+
+#else // linux ...
 #if USE_COMPLEX
 #include <Eigen/Dense>
 typedef Eigen::MatrixXcd DCMATRIX;
 #define ZEROMAT(x, n, m)     x.setConstant(0.0)
 #define ZEROVEC(x, n)     x.setConstant(0.0) //???
 #else
-//#include <Eigen/Dense>
-typedef MATRIX DCMATRIX;
-typedef VECTOR DCVECTOR;
-//typedef Eigen::MatrixXcd DCMATRIX;
-//typedef Eigen::MatrixXf DCMATRIX;
-//typedef Eigen::MatrixXd DCMATRIX;
-#define ZEROMAT(x, n, m) { x.resize(n, m); x = 0.0;}
+#include <Eigen/Dense>
+typedef Eigen::MatrixXd DCMATRIX;
+#define ZEROMAT(x, n, m) x.setConstant(0.0)
 #define ZEROVEC(x, n) { x.resize(n); x = 0.0;}
 #endif
-
+#endif
 
 using namespace std;
 
