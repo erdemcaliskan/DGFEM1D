@@ -12,33 +12,37 @@ lumpMass
 #		Mats_Only	 			// M, C, K computed
 #		Mats_OnlyNaturalMode	// (-M omega^2 + i omega C + K) a  = 0 is solved for omega
 # matrix and RHS F
+#		smt_Mats_OnlyBloch 		// Bloch Mode			
+#			Activated INDIRECTLY by nonempty ks_real and/or ks_imag vectors
+#			If active:			// BCs become		Neumann (CFEM) or PeriodicOrBloch (DG)
 #		MatsF_Static			// Ka = F
 #		MatsF_Dynamic			// Ma'' + Ca' + Ka = F is solved dynamically - time stepping option should be provided separately
 #		MatsF_Helmholtz			// (-M omega^2 + i omega C + K) a = F
+#			Activated INDIRECTLY by nonempty omegas_real and/or omegas_imag vectors
+#
 solutionMode
 #Mats_Only
 MatsF_Static
+
+# Bloch mode is activated if ks_real or ks_imag are nonempty
+ks_real
+{	4 vals	{ 0.0 } { st .1 step 0.05 en 0.3 } { 0.5 } { st 0.8 step 0.1 en 1.5 } }
+
+ks_imag
+{ 0  }
+
+# Helmholtz mode is activated is omegas_real or omegas_imag are nonempty
+omegas_real
+{ 0  }
+
+omegas_imag
+{ 0  }
 
 # cfem	DG_2FUV	DG_1F_vStar	DG_1F_uStar
 wf_type
 #cfem
 #DG_2FUV
 DG_1F_uStar
-
-isBlochModeAnalysis
-1
-
-wavenumber_k_real
-1.0
-
-wavenumber_k_imag
-0.0
-
-isHelmholtz
-0
-
-omega
-1.0
 
 # Riemann	Central	Alternating_sL	Alternating_sR
 sOption
@@ -62,6 +66,7 @@ etaI
 etaB
 1.0
 #0.0
+
 
 #   Dirichlet	Neumann		Characteristics		Unspecified		Symmetric		AntiSymmetric	PeriodicOrBloch
 # only Neumann implemented; PeriodicOrBloch entry here seems sufficient and isBlochModeAnalysis above may be removed (TODO)

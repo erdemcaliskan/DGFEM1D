@@ -11,11 +11,15 @@ lumpMass
 # matrix only
 #		Mats_Only	 			// M, C, K computed
 #		Mats_OnlyNaturalMode	// (-M omega^2 + i omega C + K) a  = 0 is solved for omega
-#		Mats_OnlyBloch,		 	// option for Bloch mode analysis 
 # matrix and RHS F
+#		smt_Mats_OnlyBloch 		// Bloch Mode			
+#			Activated INDIRECTLY by nonempty ks_real and/or ks_imag vectors
+#			If active:			// BCs become		Neumann (CFEM) or PeriodicOrBloch (DG)
 #		MatsF_Static			// Ka = F
 #		MatsF_Dynamic			// Ma'' + Ca' + Ka = F is solved dynamically - time stepping option should be provided separately
 #		MatsF_Helmholtz			// (-M omega^2 + i omega C + K) a = F
+#			Activated INDIRECTLY by nonempty omegas_real and/or omegas_imag vectors
+#
 solutionMode
 #Mats_Only
 MatsF_Static
@@ -25,15 +29,6 @@ wf_type
 #cfem
 #DG_2FUV
 DG_1F_uStar
-
-isBlochModeAnalysis
-0
-
-isHelmholtz
-0
-
-omega
-1.0
 
 # Riemann	Central	Alternating_sL	Alternating_sR
 sOption

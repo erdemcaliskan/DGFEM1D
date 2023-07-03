@@ -65,13 +65,12 @@ class Configuration
     BoundaryConditionT leftBC, rightBC;
 	int leftBC_loadNumber, rightBC_loadNumber;
 	vector<double> leftBC_loadValues, rightBC_loadValues;
-    bool isBlochModeAnalysis;
-	Dcomplex wavenumber_k;
-    Dcomplex gamma, gamma_inv; // gamma = exp(i k L) // k wavenumber, L is domain
-                               // length -> needed for Bloch analysis
-
-    bool isHelmholtz;
-    double omega;
+	// Bloch mode analysis
+	unsigned int sz_k;
+	vector<Dcomplex> ks;
+	// Helmholtz analysis
+	unsigned sz_omega;
+	vector<Dcomplex> omegas;
 
 	////////////////////////////////////////////////////
 	///// material properties
@@ -156,6 +155,7 @@ class Configuration
     void AssembleGlobalMatrices_CFEM(bool assembleMassIn);
     // I think everything can be solved here, except Bloch analysis that should be written to a file for Ali
 	void Compute_StaticKaFSystem();
+	void Compute_BlochModeAnalysis();
 	void Process_Output_GlobalMatrices();
 
     /////////////////////////////////////////////////////
@@ -206,6 +206,12 @@ class Configuration
 
 	// Force calculations
 	void Compute_left_right_prescribedVals(double time, double& valLeft, double& valRight);
+
+	// For Bloch mode analysis
+	Dcomplex gamma, gamma_inv;
+	// For Helmholtz equation
+	double omega;
+	bool b_PeriodicBC_But_NoBloch;
 };
 
 double ComputeLoad(double t, int loadNumber, const vector<double>& loadValues);

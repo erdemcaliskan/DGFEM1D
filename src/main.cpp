@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
 {
 	serialNumber = 0;
 	string configName = "configFile.txt";
+	// For Ali: uncomment the line below
 	// configName = "configFileMM.txt";
 	if (argc > 0)
 	{

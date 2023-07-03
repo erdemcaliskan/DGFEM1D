@@ -105,4 +105,58 @@ typedef enum
     DG_epsilonT_SIZE
 } DG_epsilonT;
 
+
+// st, st  + step, ... end (end <= en) 
+// en included if (enInclusive)
+// either step OR num is specified
+// { vl } ONE value is read
+class UniformVals
+{
+	friend 	istream& operator>>(istream &input, UniformVals& dat);
+public:
+	UniformVals();
+	void setVals();
+	void Read(istream& in);
+	double st;
+	double en;
+	double step;
+	// num = number of SEGMENTS (NOT the points)
+	int num;
+	bool enInclusive;
+
+	vector<double> vals;
+};
+
+class VecOfVals
+{
+	friend 	istream& operator>>(istream &input, VecOfVals& dat);
+public:
+	VecOfVals();
+	void add_VecOfVals(double val);
+	void set_VecOfVals(vector<double>& finalValsIn);
+	// if delVal < 0, it's treated as the number of segments
+	// return is the number of segments
+	int set_UniformVecOfValues(double minVal, double maxVal, double& delVal);
+	void AddVecOfVals(VecOfVals& other);
+	inline bool IsEmpty() const { return (finalVals.size() == 0); }
+	vector<UniformVals> uniformRanges;
+	vector<double> finalVals;
+	double minStep; // minimum of step between different point values
+	inline double& operator[] (unsigned int i) { return finalVals[i]; }
+	double operator[] (unsigned int i) const { return finalVals[i]; }
+	// functions needed for finding line intersection with time slices, etc.
+	// returns the first index for which the value in finalVals[index] >= val within tolerance relTol * minStep
+	// assumes values in finalVals are ascending order
+	int FindFirstIndex_WithEqualOrLargerVal(double val, double relTol = 1e-5);
+	// indexMin is the first index for which finalVals is >= minV
+	// indexMax is the last index for which finalVals is <= maxV
+	// used for line intersection, ...
+	// returns true if indexMin <= indexMax (i.e. there is some intersection)
+	// assumes values in finalVals are ascending order
+	bool FinalMinMaxIndices_Of_ValsBetweenMinMax(double minV, double maxV, int& indexMin, int& indexMax, double relTol = 1e-5);
+	double GetLastValue() const;
+	// aux functions
+	void SetMinStep();
+};
+
 #endif

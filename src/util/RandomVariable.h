@@ -87,6 +87,7 @@ public:
 class gRandVar {
 public:
 	/*Accessors*/
+	virtual ~gRandVar() {};
 	void ReadParameters(istream& in);
 	// return value correspond to the given standard normal value for this random variable PDF
 	double TurnStandardNormalValue2ThisRandom(double standardNormalValue) const;
