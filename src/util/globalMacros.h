@@ -7,6 +7,7 @@
 
 #if VCPP
 #define USE_COMPLEX	0
+//#define USE_COMPLEX	1
 #else
 //#define USE_COMPLEX	1
 #define USE_COMPLEX	0

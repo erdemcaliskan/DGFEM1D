@@ -11,7 +11,6 @@ lumpMass
 # matrix only
 #		Mats_Only	 			// M, C, K computed
 #		Mats_OnlyNaturalMode	// (-M omega^2 + i omega C + K) a  = 0 is solved for omega
-#		Mats_OnlyBloch,		 	// option for Bloch mode analysis 
 # matrix and RHS F
 #		MatsF_Static			// Ka = F
 #		MatsF_Dynamic			// Ma'' + Ca' + Ka = F is solved dynamically - time stepping option should be provided separately
@@ -27,7 +26,13 @@ wf_type
 DG_1F_uStar
 
 isBlochModeAnalysis
-0
+1
+
+wavenumber_k_real
+1.0
+
+wavenumber_k_imag
+0.0
 
 isHelmholtz
 0
@@ -45,7 +50,7 @@ Central
 #  1 -> NIPG (needs eta > 0)
 #  0 -> IIPG (large eta?) Incomplete ... (Dawson, Sun, Wheeler 2004)
 dg_eps
-1
+-1
 #0
 
 # factor(etaI)[u][u] penalty term inside the domain
@@ -61,13 +66,13 @@ etaB
 #   Dirichlet	Neumann		Characteristics		Unspecified		Symmetric		AntiSymmetric	PeriodicOrBloch
 # only Neumann implemented; PeriodicOrBloch entry here seems sufficient and isBlochModeAnalysis above may be removed (TODO)
 leftBC
-Dirichlet
-#Neumann
+#Dirichlet
+Neumann
 
 
 rightBC
-Dirichlet
-#Neumann
+#Dirichlet
+Neumann
 
 # load Numbers: 0	-> constant   loadValue[0], 1 -> linear in t  loadValue[0] + loadValue[1] * t, ....
 
@@ -94,9 +99,9 @@ output
 ################################################################################# material properties
 ############################			uniform	(option 1)		random_field (option 2)			layered (option 3)
 mPropt
-uniform
+#uniform
 #random_field
-#layered
+layered
 
 ### Option 1: mPropt == uniform
 num_elements
@@ -212,7 +217,8 @@ numRepeatSequence
 # > 0	-> bulk sizes should be smaller than this
 # < 0  -> refinement ratio (e.g. -2 -> each segment is divided into two)
 directSpaceSizeModifier
--4
+#-4
+-1
 
 bulk_elastic_map
 	{

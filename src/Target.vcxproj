@@ -17,7 +17,6 @@
     <ClCompile Include="util\globalMacros.cpp" />
     <ClCompile Include="util\globalTypesClasses.cpp" />
     <ClCompile Include="util\InhomogeousField.cpp" />
-    <ClCompile Include="util\LAfuncs.cpp" />
     <ClCompile Include="util\LAfuncsFinalStep.cpp" />
     <ClCompile Include="util\LAfuncsFixed.cpp" />
     <ClCompile Include="util\LayeredProperties.cpp" />

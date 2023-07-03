@@ -66,6 +66,7 @@ class Configuration
 	int leftBC_loadNumber, rightBC_loadNumber;
 	vector<double> leftBC_loadValues, rightBC_loadValues;
     bool isBlochModeAnalysis;
+	Dcomplex wavenumber_k;
     Dcomplex gamma, gamma_inv; // gamma = exp(i k L) // k wavenumber, L is domain
                                // length -> needed for Bloch analysis
 
