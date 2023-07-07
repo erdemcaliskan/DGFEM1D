@@ -16,4 +16,6 @@ double computeRatio(double numerator, double denominator);
 
 void ReadVectorDouble(istream& in, vector<double>& dat);
 
+bool DoublesAreEqual(double d1, double d2, double tol);
+
 #endif

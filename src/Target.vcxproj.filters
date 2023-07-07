@@ -24,9 +24,6 @@
     <ClCompile Include="util\globalTypesClasses.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="util\LAfuncs.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="util\LAfuncsFinalStep.cpp">
       <Filter>src</Filter>
     </ClCompile>

@@ -201,7 +201,8 @@ double getStatvalue(const vector<double>& vals, setStatOp_type sso)
 			tmp = vals[i] - meanV;
 			var += tmp * tmp;
 		}
-		var /= (double)sz;
+		if (sz > 1)
+			var /= (double)(sz - 1);
 		if (sso == sso_var)
 			return var;
 		return sqrt(var);
@@ -211,7 +212,7 @@ double getStatvalue(const vector<double>& vals, setStatOp_type sso)
 		double meanV = 0.0;
 		for (unsigned int i = 0; i < sz; ++i)
 			meanV += 1.0 / vals[i];
-		meanV /= (double)(sz - 1.0);
+		meanV /= (double)sz;
 		return 1.0 / meanV;
 	}
 	if (sso == sso_mean_geometric)

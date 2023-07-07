@@ -1,7 +1,7 @@
 {
 # polynomidal orer for elements
 polyOrder 
-2
+1
 
 lumpMass 
 0
@@ -22,13 +22,27 @@ lumpMass
 #
 solutionMode
 #Mats_Only
-Mats_OnlyNaturalMode
+MatsF_Static
+
+# Bloch mode is activated if ks_real or ks_imag are nonempty
+ks_real
+{	4 vals	{ 0.0 } { st .1 step 0.05 en 0.3 } { 0.5 } { st 0.8 step 0.1 en 1.5 } }
+
+ks_imag
+{ 0  }
+
+# Helmholtz mode is activated is omegas_real or omegas_imag are nonempty
+omegas_real
+{ 0  }
+
+omegas_imag
+{ 0  }
 
 # cfem	DG_2FUV	DG_1F_vStar	DG_1F_uStar
 wf_type
 #cfem
 #DG_2FUV
-DG_1F_vStar
+DG_1F_uStar
 
 # Riemann	Central	Alternating_sL	Alternating_sR
 sOption
@@ -40,7 +54,7 @@ Central
 #  1 -> NIPG (needs eta > 0)
 #  0 -> IIPG (large eta?) Incomplete ... (Dawson, Sun, Wheeler 2004)
 dg_eps
-1
+-1
 #0
 
 # factor(etaI)[u][u] penalty term inside the domain
@@ -53,16 +67,17 @@ etaB
 1.0
 #0.0
 
+
 #   Dirichlet	Neumann		Characteristics		Unspecified		Symmetric		AntiSymmetric	PeriodicOrBloch
 # only Neumann implemented; PeriodicOrBloch entry here seems sufficient and isBlochModeAnalysis above may be removed (TODO)
 leftBC
-Dirichlet
-#Neumann
+#Dirichlet
+Neumann
 
 
 rightBC
-Dirichlet
-#Neumann
+#Dirichlet
+Neumann
 
 # load Numbers: 0	-> constant   loadValue[0], 1 -> linear in t  loadValue[0] + loadValue[1] * t, ....
 
@@ -79,23 +94,23 @@ rightBC_loadNumber
 
 rightBC_loadValues
 {
-0.0
+1.0
 }
 
 # output file name for K, M, C
 outputFileNameWOExt
-output_DG_1F_vStar_central_epsp1_eta1
+output
 
 ################################################################################# material properties
 ############################			uniform	(option 1)		random_field (option 2)			layered (option 3)
 mPropt
-uniform
+#uniform
 #random_field
-#layered
+layered
 
 ### Option 1: mPropt == uniform
 num_elements
-100
+2
 
 xm
 -0.5
@@ -207,7 +222,8 @@ numRepeatSequence
 # > 0	-> bulk sizes should be smaller than this
 # < 0  -> refinement ratio (e.g. -2 -> each segment is divided into two)
 directSpaceSizeModifier
--4
+#-4
+-1
 
 bulk_elastic_map
 	{

@@ -4,7 +4,9 @@
 #include "globalFunctions.h"
 
 #if USE_COMPLEX
+#if !VCPP
 #include <Eigen/Eigenvalues>
+#endif
 #endif
 
 Configuration::Configuration()
@@ -13,8 +15,8 @@ Configuration::Configuration()
     wf_type = DG_1F_vStar; // cfem DG_2FUV DG_1F_vStar;
     sOption = so_Riemann;
     dg_eps = dg_eps_p1;
-	isBlochModeAnalysis = false;
-	isHelmholtz = false;
+	gamma = 1.0;
+	gamma_inv = 1.0;
 	omega = 1.0;
 
     etaI = 1.0;
@@ -62,14 +64,38 @@ void Configuration::Main_SolveDomain(const string &configName, int serialNumberI
     else
         AssembleGlobalMatrices_CFEM(assembleMass);
 	Compute_StaticKaFSystem();
+	Compute_BlochModeAnalysis();
     Process_Output_GlobalMatrices();
 }
 
 void Configuration::Initialize_Configuration()
 {
+	isDG = (wf_type != cfem);
+	if (sz_omega > 0)
+		solutionMode = smt_MatsF_Helmholtz;
+	if (sz_k > 0)
+		solutionMode = smt_Mats_OnlyBloch;
+	if (solutionMode == smt_Mats_OnlyBloch)
+	{
+#if USE_COMPLEX
+		if (isDG)
+		{
+			leftBC = bct_PeriodicOrBloch;
+			rightBC = bct_PeriodicOrBloch;
+		}
+		else
+		{
+			leftBC = bct_Neumann;
+			rightBC = bct_Neumann;
+		}
+#else
+		THROW("solutionMode == smt_Mats_OnlyBloch is read as true from config file, but macro USE_COMPLEX is 0 in the code. In globalMacros.h turn it on\n");
+#endif
+	}
+	b_PeriodicBC_But_NoBloch = (((leftBC == bct_PeriodicOrBloch) || (rightBC == bct_PeriodicOrBloch)) && (solutionMode != smt_Mats_OnlyBloch));
+
 	SetBooleans_SolutionMode(solutionMode, sm_needForce, sm_isDynamic);
 
-    isDG = (wf_type != cfem);
     weight_BLM_is_velocity = (wf_type == DG_2FUV);
     num_fields = 1;
     field_pos_weight_BLM = 0;
@@ -160,10 +186,10 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
             THROW("Invalid sOption\n");
         }
     }
-
+	
     /// if w is u (Helmholtz), we need to use i omega to adjust the weights
 #if USE_COMPLEX
-    if (isHelmholtz)
+    if (solutionMode == smt_MatsF_Helmholtz)
     {
         Dcomplex iomega = omega * Icomp, iomega_inv = 1.0 / iomega;
 
@@ -184,7 +210,8 @@ void Configuration::Compute_DG_Star_Weights_4_Inteior_Interface(const ElementPro
     twoSideWeights.side_weights[SDR].ss_f_wL = -twoSideWeights.side_weights[SDR].ss_f_wL;
     twoSideWeights.side_weights[SDR].ss_f_wR = -twoSideWeights.side_weights[SDR].ss_f_wR;
 
-    if ((!isBlochModeAnalysis) || insideDomainInterface) // ready to return
+	
+    if ((solutionMode != smt_Mats_OnlyBloch) || insideDomainInterface) // ready to return
         return;
 
     // deal with Bloch mode analysis where gamma is involved
@@ -496,7 +523,7 @@ bool Configuration::Compute_DirichletBoundaryInterface_Matrices(const OneDimensi
 		{
 			double d_sigma_da = B_Element[j] * e.elementProps.E; // strain at that point times stress
 			NUMBR dSigmaStar_da = d_sigma_da * n; // sigma*n -> sigma . n  part
-			double tmp = dVhat_da * dSigmaStar_da;
+			NUMBR tmp = dVhat_da * dSigmaStar_da;
 			// A1
 			interfaceK(i + start_dof_w, j + start_dof_usigma) -= tmp;
 			// B
@@ -605,6 +632,9 @@ void Configuration::Compute_NeumannBoundaryInterface_ForceVector(const OneDimens
 	unsigned int start_dof_w = 0; // w stands for u or v in the formulation
 	if (wf_type == DG_2FUV) // 2-field formulation
 		start_dof_w = ndof_parent_element;
+
+	unsigned int size_interfaceMatrices = ndof_element;
+	ZEROVEC(F, size_interfaceMatrices);
 
 	// N: shape: actual solution, B not needed
 	VECTOR N_lement(ndof_parent_element);
@@ -716,14 +746,21 @@ void Configuration::Read_ElementGeometryProperties()
 	{
 		num_elements = layered_properties.sz_allsequences;
 		elements.resize(num_elements);
+		xm = 0.0, xM = 0.0;
+		double h;
 		for (unsigned int ei = 0; ei < num_elements; ++ei)
 		{
 			oneBulk_Elastic_Prop* bepPtr = &layered_properties.finalBulkSegments[ei];
-			elements[ei].elementProps.hE = bepPtr->getLength();
+			h = bepPtr->getLength();
+			xM += h;
+			elements[ei].elementProps.hE = h;
 			elements[ei].elementProps.E = bepPtr->E;
 			elements[ei].elementProps.rho = bepPtr->rho;
 			elements[ei].elementProps.damping = bepPtr->damping;
 		}
+		double halfLength = 0.5 * xM;
+		xm -= halfLength;
+		xM -= halfLength;
 	}
 	else
 	{
@@ -765,13 +802,12 @@ void Configuration::Form_ElementMatrices()
     else
     {
         /// A. Number of dofs and domain:nodal dof map
-        bool hasPeriodicBC = (leftBC == bct_PeriodicOrBloch) && (!isBlochModeAnalysis);
         // there is one dof shared between elements
         number_of_nodes = (ndof_element - 1) * num_elements + 1;
         //
         nodedof_map.resize(number_of_nodes);
         // for non-periodic case, there is one extra dof on far right
-        if (!hasPeriodicBC)
+        if (!b_PeriodicBC_But_NoBloch)
             ndof_domain = number_of_nodes;
         else
             ndof_domain = number_of_nodes - 1;
@@ -789,7 +825,7 @@ void Configuration::Form_ElementMatrices()
         npdof_domain = cntr_p;
         nfdof_domain = ndof_domain - npdof_domain;
 
-        unsigned int en = ndof_domain - 2 + (int)hasPeriodicBC;
+        unsigned int en = ndof_domain - 2 + (int)b_PeriodicBC_But_NoBloch;
         // all of these are free
         for (unsigned int nodei = 1; nodei <= en; ++nodei)
             nodedof_map[nodei] = cntr_f++;
@@ -797,7 +833,7 @@ void Configuration::Form_ElementMatrices()
         if (rightBC != bct_Dirichlet)
         {
             unsigned int lastNode_index = number_of_nodes - 1;
-            if (hasPeriodicBC)
+            if (b_PeriodicBC_But_NoBloch)
                 nodedof_map[lastNode_index] = 0;
             else if ((rightBC == bct_Neumann) ||
                      (rightBC == bct_PeriodicOrBloch)) // for the latter it will be Bloch as periodic is handled above.
@@ -955,7 +991,6 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
 //    }
 
     /// Step B:  Inter-element facets
-    bool doesHaveBlochOrPeriodicBC = ((leftBC == bct_PeriodicOrBloch) || (rightBC == bct_PeriodicOrBloch));
 
     if (leftBC == bct_Characteristics)
         THROW("left BC has stiffness contributions not taken care of\n");
@@ -1028,28 +1063,30 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
     // I0 eInterior0 I1 eInterior1 ... I(n-1) eInterior(n-1) In
     // interior interfaces are from 1 to n -1
     st = 1;
-    if (doesHaveBlochOrPeriodicBC)
-        st = 0;
-    unsigned int interface_dof = 2 * ndof_element;
+	unsigned enInterface = en;
+    if (b_PeriodicBC_But_NoBloch)
+		enInterface = num_elements;
 
-    for (unsigned int interfacei = st; interfacei <= en; ++interfacei)
+	unsigned int interface_dof = 2 * ndof_element;
+
+    for (unsigned int interfacei = st; interfacei <= enInterface; ++interfacei)
     {
         const OneDimensionalElement *left_ePtr, *right_ePtr;
         int left_e_dof_st, right_e_dof_st;
-        bool insideDomainInterface = false;
-        if (interfacei != 0) // interior interfaces
+        bool insideDomainInterface = true;
+		left_e_dof_st = element_start_dof[interfacei - 1];
+		left_ePtr = &elements[interfacei - 1];
+		if (interfacei < num_elements) // interior interfaces
         {
-            left_e_dof_st = element_start_dof[interfacei - 1];
-            left_ePtr = &elements[interfacei - 1];
-        }
+			right_e_dof_st = element_start_dof[interfacei];
+			right_ePtr = &elements[interfacei];
+		}
         else
         {
-            left_e_dof_st = element_start_dof[en];
-            left_ePtr = &elements[en];
-            insideDomainInterface = true;
+			right_e_dof_st = element_start_dof[0];
+			right_ePtr = &elements[0];
+			insideDomainInterface = false;
         }
-        right_e_dof_st = element_start_dof[interfacei];
-        right_ePtr = &elements[interfacei];
         DCMATRIX interfaceK, interfaceC;
 		ZEROMAT(interfaceK, interface_dof, interface_dof);
 		ZEROMAT(interfaceC, interface_dof, interface_dof);
@@ -1058,7 +1095,7 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
                                                                         interfaceK, interfaceC);
 
         /// assemble K
-        if (interfacei != 0) // interior interfaces
+        if (insideDomainInterface) // interior interfaces
         {
             for (unsigned int i = 0; i < interface_dof; ++i)
             {
@@ -1081,22 +1118,21 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
                 }
             }
         }
-        else
+        else // This part is only done for period (but not Bloch) BC. Bloch BC is done later for all ks
         {
-            unsigned int startOfLastElement = element_start_dof[num_elements - 1]; // is equal to left_e_dof_st
             for (unsigned int i = 0; i < ndof_element; ++i)
             {
                 for (unsigned int j = 0; j < ndof_element; ++j)
                 {
                     // RR
-                    globalK(i, j) += interfaceK(i + ndof_element, j + ndof_element);
+                    globalK(i + right_e_dof_st, j + right_e_dof_st) += interfaceK(i + ndof_element, j + ndof_element);
                     // RL
-                    globalK(i, j + startOfLastElement) += interfaceK(i + ndof_element, j);
+                    globalK(i + right_e_dof_st, j + left_e_dof_st) += interfaceK(i + ndof_element, j);
                     // LR
-                    globalK(i + startOfLastElement, j) += interfaceK(i, j + ndof_element);
+                    globalK(i + left_e_dof_st, j + right_e_dof_st) += interfaceK(i, j + ndof_element);
                     // LL
-                    globalK(i + startOfLastElement, j + startOfLastElement) += interfaceK(i, j);
-                }
+                    globalK(i + left_e_dof_st, j + left_e_dof_st) += interfaceK(i, j);
+				}
             }
             if (hasC)
             {
@@ -1105,14 +1141,14 @@ void Configuration::AssembleGlobalMatrices_DG(bool assembleMassIn)
                     for (unsigned int j = 0; j < ndof_element; ++j)
                     {
                         // RR
-                        globalC(i, j) += interfaceC(i + ndof_element, j + ndof_element);
-                        // RL
-                        globalC(i, j + startOfLastElement) += interfaceC(i + ndof_element, j);
-                        // LR
-                        globalC(i + startOfLastElement, j) += interfaceC(i, j + ndof_element);
-                        // LL
-                        globalC(i + startOfLastElement, j + startOfLastElement) += interfaceC(i, j);
-                    }
+						globalC(i + right_e_dof_st, j + right_e_dof_st) += interfaceC(i + ndof_element, j + ndof_element);
+						// RL
+						globalC(i + right_e_dof_st, j + left_e_dof_st) += interfaceC(i + ndof_element, j);
+						// LR
+						globalC(i + left_e_dof_st, j + right_e_dof_st) += interfaceC(i, j + ndof_element);
+						// LL
+						globalC(i + left_e_dof_st, j + left_e_dof_st) += interfaceC(i, j);
+					}
                 }
             }
         }
@@ -1216,6 +1252,8 @@ void Configuration::Read_ConfigFile(const string& configName)
             THROW("istream should start with {");
         }
     }
+	VecOfVals ks_real, ks_imag, omegas_real, omegas_imag;
+
     READ_NSTRING(in, buf, buf);
     while (buf != "}")
     {
@@ -1235,17 +1273,21 @@ void Configuration::Read_ConfigFile(const string& configName)
 		{
 			in >> wf_type;
 		}
-		else if (buf == "isBlochModeAnalysis")
+		else if (buf == "ks_real")
 		{
-			READ_NBOOL(in, buf, isBlochModeAnalysis);
+			in >> ks_real;
 		}
-		else if (buf == "isHelmholtz")
+		else if (buf == "ks_imag")
 		{
-			READ_NBOOL(in, buf, isHelmholtz);
+			in >> ks_imag;
 		}
-		else if (buf == "omega")
+		else if (buf == "omegas_real")
 		{
-			READ_NDOUBLE(in, buf, omega);
+			in >> omegas_real;
+		}
+		else if (buf == "omegas_imag")
+		{
+			in >> omegas_imag;
 		}
 		else if (buf == "sOption")
 		{
@@ -1385,6 +1427,30 @@ void Configuration::Read_ConfigFile(const string& configName)
         }
         READ_NSTRING(in, buf, buf);
     }
+	// ks
+	unsigned int sz_kr = ks_real.finalVals.size(), sz_ki = ks_imag.finalVals.size();
+	sz_k = MAX(sz_kr, sz_ki);
+	ks.resize(sz_k);
+	for (unsigned int i = 0; i < sz_k; ++i)
+		ks[i] = 0.0;
+	if (sz_kr > 0)
+		for (unsigned int i = 0; i < sz_kr; ++i)
+			ks[i].real(ks_real[i]);
+	if (sz_ki > 0)
+		for (unsigned int i = 0; i < sz_ki; ++i)
+			ks[i].imag(ks_imag[i]);
+	// omegas
+	unsigned int sz_omegar = omegas_real.finalVals.size(), sz_omegai = omegas_imag.finalVals.size();
+	sz_omega = MAX(sz_omegar, sz_omegai);
+	omegas.resize(sz_omega);
+	for (unsigned int i = 0; i < sz_omega; ++i)
+		omegas[i] = 0.0;
+	if (sz_omegar > 0)
+		for (unsigned int i = 0; i < sz_omegar; ++i)
+			omegas[i].real(omegas_real[i]);
+	if (sz_omegai > 0)
+		for (unsigned int i = 0; i < sz_omegai; ++i)
+			omegas[i].imag(omegas_imag[i]);
 }
 
 void Configuration::Compute_StaticKaFSystem()
@@ -1447,6 +1513,108 @@ void Configuration::Compute_StaticKaFSystem()
 #else
     // eigen-based Ka = F --- you may need to have 3 versions of DCVECTOR 1 VCPP, 2 otherwise
 #endif
+}
+
+void Configuration::Compute_BlochModeAnalysis()
+{
+	if (solutionMode != smt_Mats_OnlyBloch)
+		return;
+
+	string str_ser;
+	toString(serialNumber, str_ser);
+	string filename = outputFileNameWOExt + "_" + str_ser + "_Bloch.txt";
+	fstream out(filename.c_str(), ios::out);
+	out << setprecision(22);
+	out << "sz_k\t" << sz_k << '\n';
+
+	Dcomplex I(0.0, 1.0);
+
+	for (unsigned ik = 0; ik < sz_k; ++ik)
+	{
+		//! 1. Forming k, gamma = exp(ikL), gamma_inv
+		Dcomplex k = ks[ik];
+		Dcomplex exp_v = domain_length * (I * k);
+		gamma = exp(exp_v);
+		gamma_inv = 1.0 / gamma;
+
+		DCMATRIX MBloch, KBloch, CBloch;
+
+		if (isDG)
+		{ // DG start
+			MBloch = globalM;
+			KBloch = globalK;
+			if (b_hasNonZeroDampingMatrix)
+				CBloch = globalC;
+
+			//! 2DG: Updating K for Bloch BC
+			unsigned int interface_dof = 2 * ndof_element;
+			unsigned interfacei = num_elements;
+			const OneDimensionalElement *left_ePtr, *right_ePtr;
+			int left_e_dof_st, right_e_dof_st;
+			bool insideDomainInterface = false;
+			left_e_dof_st = element_start_dof[interfacei - 1];
+			left_ePtr = &elements[interfacei - 1];
+			right_e_dof_st = element_start_dof[0];
+			right_ePtr = &elements[0];
+			DCMATRIX interfaceK, interfaceC;
+			ZEROMAT(interfaceK, interface_dof, interface_dof);
+			ZEROMAT(interfaceC, interface_dof, interface_dof);
+			bool hasC = Compute_InteriorInterface_Matrices(*left_ePtr, *right_ePtr, insideDomainInterface,
+				interfaceK, interfaceC);
+
+			for (unsigned int i = 0; i < ndof_element; ++i)
+			{
+				for (unsigned int j = 0; j < ndof_element; ++j)
+				{
+					// RR
+					KBloch(i + right_e_dof_st, j + right_e_dof_st) += interfaceK(i + ndof_element, j + ndof_element);
+					// RL
+					KBloch(i + right_e_dof_st, j + left_e_dof_st) += interfaceK(i + ndof_element, j);
+					// LR
+					KBloch(i + left_e_dof_st, j + right_e_dof_st) += interfaceK(i, j + ndof_element);
+					// LL
+					KBloch(i + left_e_dof_st, j + left_e_dof_st) += interfaceK(i, j);
+				}
+			}
+			if (hasC)
+			{
+				for (unsigned int i = 0; i < ndof_element; ++i)
+				{
+					for (unsigned int j = 0; j < ndof_element; ++j)
+					{
+						// RR
+						CBloch(i + right_e_dof_st, j + right_e_dof_st) += interfaceC(i + ndof_element, j + ndof_element);
+						// RL
+						CBloch(i + right_e_dof_st, j + left_e_dof_st) += interfaceC(i + ndof_element, j);
+						// LR
+						CBloch(i + left_e_dof_st, j + right_e_dof_st) += interfaceC(i, j + ndof_element);
+						// LL
+						CBloch(i + left_e_dof_st, j + left_e_dof_st) += interfaceC(i, j);
+					}
+				}
+			}
+		} // DG end
+		else // CFEM start
+		{
+			// For Ali
+			// use the relation that last dof = gamma first dof to shrink global M, and K by size 1 to their Bloch form
+		} // CFEM end
+
+		//!. 3 Bloch Calculations - Now the matrices are simply output
+
+		out << "ik\t" << ik << '\t';
+		out << "k\t" << k << '\t';
+		out << "gamma\t" << gamma << '\t';
+		out << "gamma_inv\t" << gamma_inv << '\n';
+		out << "KBloch\n" << KBloch << '\n';
+		out << "MBloch\n" << MBloch << '\n';
+		if (b_hasNonZeroDampingMatrix)
+			out << "CBloch\n" << CBloch << '\n';
+
+		// For Ali
+		//! 4. You can do Bloch calculations here or ideally read this matrices outside and do the calculation there. 
+		// In the latter case it may be a good idea to write the matrices in binary
+	}
 }
 
 void Configuration::Process_Output_GlobalMatrices()
@@ -1526,11 +1694,13 @@ void Configuration::Process_Output_GlobalMatrices()
 		//out << "eigenvalues\n" << es.eigenvalues() << '\n';
 	}
 #if USE_COMPLEX
+#if !VCPP
     Eigen::ComplexEigenSolver<Eigen::MatrixXcd> ces;
 
     ces.compute (globalM.inverse()*globalK);
 
     out << "eigenvalues\n" << ces.eigenvalues() << '\n';
+#endif
 #endif
 }
 

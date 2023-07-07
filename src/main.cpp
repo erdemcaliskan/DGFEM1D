@@ -2,7 +2,9 @@
 #include "util/globalMacros.h"
 
 #if USE_COMPLEX
+#if !VCPP
 #include <Eigen/Dense>
+#endif
 #endif
 
 using namespace std;
@@ -15,6 +17,8 @@ int main(int argc, char *argv[])
 {
 	serialNumber = 0;
 	string configName = "configFile.txt";
+	// For Ali: uncomment the line below
+	// configName = "configFileMM.txt";
 	if (argc > 0)
 	{
 		for (int i = 1; i < argc; ++i)
@@ -46,6 +50,7 @@ int main(int argc, char *argv[])
     return 0;
 
     // Example
+#if !VCPP
 #if USE_COMPLEX
     Eigen::MatrixXcd m(2, 2); // MatrixXcd typedef Matrix< std::complex< double >,
                               // Dynamic, Dynamic >
@@ -63,6 +68,7 @@ int main(int argc, char *argv[])
     Eigen::ComplexEigenSolver<Eigen::MatrixXcd> ces;
     ces.compute(m * n.transpose());
     cout << "Eigen Values:\n" << ces.eigenvalues() << endl;
+#endif
 #endif
 #if VCPP
 	cout << "successful solution\n";

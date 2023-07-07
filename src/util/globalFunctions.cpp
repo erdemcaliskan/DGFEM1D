@@ -136,3 +136,11 @@ void ReadVectorDouble(istream& in, vector<double>& dat)
 		READ_NSTRING(in, buf, buf);
 	}
 }
+
+bool DoublesAreEqual(double d1, double d2, double tol)
+{
+	double den = fabs(d1);
+	if (fabs(d2) > den)	den = fabs(d2);
+	if (den < 1.0) den = 1.0;
+	return (fabs((d1 - d2) / tol) < den);
+}
