@@ -1454,16 +1454,33 @@ void Configuration::Process_Output_GlobalMatrices()
 	string str_ser;
 	toString(serialNumber, str_ser);
     string filename = outputFileNameWOExt + "_" + str_ser + ".txt";
+    string filename_k = outputFileNameWOExt + "_k_matrix" + str_ser + ".txt";
+    string filename_m = outputFileNameWOExt + "_m_matrix" + str_ser + ".txt";
+    string filename_c = outputFileNameWOExt + "_c_matrix" + str_ser + ".txt";
+    string filename_eigen = outputFileNameWOExt + "_eigen_" + str_ser + ".txt";
     fstream out(filename.c_str(), ios::out);
+    fstream out_k(filename_k.c_str(), ios::out);
+    fstream out_m(filename_m.c_str(), ios::out);
+    fstream out_c(filename_c.c_str(), ios::out);
+    fstream out_eigen(filename_eigen.c_str(), ios::out);
     out << "wf_type\t" << wf_type << '\n';
+    out << "polyOrder\t" << polyOrder << '\n';
     out << "ndof_domain\t" << ndof_domain << '\n';
-    out << "K\n" << globalK << '\n';
-    out << "K.sum\n" << globalK.sum() << '\n';
-    out << "M\n" << globalM << '\n';
-    out << "M.sum\n" << globalM.sum() << '\n';
-    out << "b_hasNonZeroDampingMatrix\n" << b_hasNonZeroDampingMatrix << '\n';
-    out << "C\n" << globalC << '\n';
+    out << "star option\t" << sOption << '\n';
+    out << "dg_eps\t" << dg_eps << '\n';
+    out << "etaI\t" << etaI << '\n';
+    out << "etaB\t" << etaB << '\n';
+    //out << "K\n" << globalK << '\n';
+    out << "K.sum\t" << globalK.sum() << '\n';
+    //out << "M\n" << globalM << '\n';
+    out << "M.sum\t" << globalM.sum() << '\n';
+    out << "b_hasNonZeroDampingMatrix\t" << b_hasNonZeroDampingMatrix << '\n';
+    //out << "C\n" << globalC << '\n';
     out << "C.sum\n" << globalC.sum() << '\n';
+    Eigen::IOFormat OctaveFmt(Eigen::FullPrecision, 0, ", ", " \n", "", "", " ", " ");
+    out_k << globalK.format(OctaveFmt) << '\n';
+    out_m << globalM.format(OctaveFmt) << '\n';
+    out_c << globalC.format(OctaveFmt) << '\n';
 	if (solutionMode == smt_MatsF_Static)
 	{
 		out << "globalF\n" << globalF << '\n';
@@ -1478,10 +1495,25 @@ void Configuration::Process_Output_GlobalMatrices()
         // print stuff
         out << "eigenvalues\n" << ces.eigenvalues() << '\n';
 #else
-		Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
-        ges.compute (globalK, globalM);
+        Eigen::ComplexEigenSolver<Eigen::MatrixXd> ces;
+        ces.compute (globalM.inverse()*globalK, /* computeEigenvectors = */ false);
         // print stuff
-        out << "eigenvalues\n" << ges.eigenvalues() << '\n';
+        out << "eigenvalues\n" << ces.eigenvalues() << '\n';
+        out_eigen << ces.eigenvalues().format(OctaveFmt) << '\n';
+        if (b_hasNonZeroDampingMatrix)
+        {
+            Eigen::ComplexEigenSolver<Eigen::MatrixXd> ces2;
+
+            Eigen::MatrixXd M_bar(2*nfdof_domain,2*nfdof_domain), K_bar(2*nfdof_domain,2*nfdof_domain);
+            Eigen::MatrixXd I = Eigen::MatrixXd::Identity(nfdof_domain,nfdof_domain);
+            Eigen::MatrixXd Z = Eigen::MatrixXd::Zero(nfdof_domain,nfdof_domain);
+            M_bar << I , Z, Z , globalM;
+            K_bar << Z , -I, globalK, globalC;
+            ces2.compute (M_bar.inverse()*K_bar, /* computeEigenvectors = */ false);
+            out << "eigenvalues2\n" << ces2.eigenvalues() << '\n';
+            out_eigen << ces2.eigenvalues().format(OctaveFmt) << '\n';
+        }
+
 #endif
 #endif
 	//
