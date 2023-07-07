@@ -1,7 +1,7 @@
 {
 # polynomidal orer for elements
 polyOrder 
-1
+2
 
 lumpMass 
 0
@@ -18,13 +18,13 @@ lumpMass
 #		MatsF_Helmholtz			// (-M omega^2 + i omega C + K) a = F
 solutionMode
 #Mats_Only
-MatsF_Static
+Mats_OnlyNaturalMode
 
 # cfem	DG_2FUV	DG_1F_vStar	DG_1F_uStar
 wf_type
 #cfem
 #DG_2FUV
-DG_1F_uStar
+DG_1F_vStar
 
 isBlochModeAnalysis
 0
@@ -84,12 +84,12 @@ rightBC_loadNumber
 
 rightBC_loadValues
 {
-1.0
+0.0
 }
 
 # output file name for K, M, C
 outputFileNameWOExt
-output
+output_DG_1F_vStar_central_epsp1_eta1
 
 ################################################################################# material properties
 ############################			uniform	(option 1)		random_field (option 2)			layered (option 3)
@@ -100,7 +100,7 @@ uniform
 
 ### Option 1: mPropt == uniform
 num_elements
-2
+100
 
 xm
 -0.5
