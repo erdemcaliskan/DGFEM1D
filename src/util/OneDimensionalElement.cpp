@@ -99,51 +99,51 @@ void OneDimensionalParentElement::Initialize(unsigned int polyOrderIn, bool lump
         /// EDITED
         if (!lumpMass)
         {
-            double fact = 1.0 / 420.0;
-            mpe[0][0] = mpe[2][2] = 8.0 * fact;
-            mpe[0][1] = mpe[1][0] = 1.0 * fact;
-            mpe[0][2] = mpe[2][0] = 1.0 * fact;
-            mpe[0][3] = mpe[3][0] = 3.0 * fact;
-            mpe[1][1] = mpe[3][3] = 8.0 * fact;
-            mpe[1][2] = mpe[2][1] = 3.0 * fact;
-            mpe[1][3] = mpe[3][1] = 1.0 * fact;
-            mpe[2][3] = mpe[3][2] = 1.0 * fact;
+            double fact = 1.0 / 68040.0;
+            mpe[0][0] = mpe[1][1] = 128.0 * fact;
+            mpe[0][1] = mpe[1][0] = 152.0 * fact;
+            mpe[0][2] = mpe[2][0] = -12.0 * fact;
+            mpe[0][3] = mpe[3][0] = 33.0 * fact;
+            mpe[2][2] = mpe[3][3] = 72.0 * fact;
+            mpe[1][2] = mpe[2][1] = 33.0 * fact;
+            mpe[1][3] = mpe[3][1] = -12.0 * fact;
+            mpe[2][3] = mpe[3][2] = -9.0 * fact;
         }
         else
         {
-            double fact = 1.0 / 15.0;
-            mpe[0][0] = mpe[3][3] = 1.0 * fact;
+            double fact = 1.0 / 9720.0;
+            mpe[0][0] = mpe[1][1] = 43.0 * fact;
             mpe[0][1] = mpe[1][0] = 0.0;
             mpe[0][2] = mpe[2][0] = 0.0;
             mpe[0][3] = mpe[3][0] = 0.0;
-            mpe[1][1] = mpe[2][2] = 8.0 * fact;
+            mpe[2][2] = mpe[3][3] = 12.0 * fact;
             mpe[1][2] = mpe[2][1] = 0.0;
             mpe[1][3] = mpe[3][1] = 0.0;
             mpe[2][3] = mpe[3][2] = 0.0;
         }
         // stiffness
         /// EDITED
-        double fact = 1.0 / 420.0;
-        mpe[0][0] = mpe[3][3] = 16.0 * fact;
-        mpe[0][1] = mpe[1][0] = 3.0 * fact;
-        mpe[0][2] = mpe[2][0] = -1.0 * fact;
-        mpe[0][3] = mpe[3][0] = -3.0 * fact;
-        mpe[1][1] = mpe[2][2] = 32.0 * fact;
-        mpe[1][2] = mpe[2][1] = 3.0 * fact;
-        mpe[1][3] = mpe[3][1] = -1.0 * fact;
-        mpe[2][3] = mpe[3][2] = 3.0 * fact;
+        double fact = 1.0 / 6480.0;
+        kpe[0][0] = kpe[1][1] = 148.0 * fact;
+        kpe[0][1] = kpe[1][0] = -13.0 * fact;
+        kpe[0][2] = kpe[2][0] = 18.0 * fact;
+        kpe[0][3] = kpe[3][0] = -63.0 * fact;
+        kpe[2][2] = kpe[3][3] = 48.0 * fact;
+        kpe[1][2] = kpe[2][1] = -63.0 * fact;
+        kpe[1][3] = kpe[3][1] = 18.0 * fact;
+        kpe[2][3] = kpe[3][2] = -33.0 * fact;
 
         // dN/dxi on the left side
-        Be_leftNode[0] = 1.0 / 3.0;
-        Be_leftNode[1] = -4.0 / 3.0;
-        Be_leftNode[2] = 4.0 / 3.0;
-        Be_leftNode[3] = -1.0 / 3.0;  
+        Be_leftNode[0] = -11.0 / 36.0;
+        Be_leftNode[1] = 1.0 / 18.0;
+        Be_leftNode[2] = -1.0 / 12.0;
+        Be_leftNode[3] = 1.0 / 6.0;  
 
         // dN/dxi on the right side
-        Be_rightNode[0] = -1.0 / 3.0;
-        Be_rightNode[1] = 4.0 / 3.0;
-        Be_rightNode[2] = -4.0 / 3.0;
-        Be_rightNode[3] = 1.0 / 3.0;
+        Be_rightNode[0] = -1.0 / 18.0;
+        Be_rightNode[1] = 11.0 / 36.0;
+        Be_rightNode[2] = -1.0 / 6.0;  
+        Be_rightNode[3] = 1.0 / 12.0;
     }
 }
 
