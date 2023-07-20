@@ -301,6 +301,53 @@ rMAT<T>& rMAT<T>::operator=(rMAT<T>& matOther)
 	return *this;
 }
 
+#if USE_BLITZ
+#include "blitz/array.h"
+typedef blitz::array<double, 1> VECTOR;
+typedef blitz::array<Dcomplex, 1> CVECTOR;
+typedef blitz::array<double, 2> MATRIX;
+#else
+typedef rVEC<double> VECTOR;
+typedef rVEC<Dcomplex> CVECTOR;
+typedef rMAT<double> MATRIX;
+#endif
+
+#if VCPP
+#if USE_BLITZ
+typedef blitz::array<Dcomplex, 2> CMATRIX;
+#else
+typedef rMAT<Dcomplex> CMATRIX;
+#endif
+
+#if USE_COMPLEX
+typedef CVECTOR DCVECTOR;
+typedef CMATRIX DCMATRIX;
+#else
+typedef VECTOR DCVECTOR;
+typedef MATRIX DCMATRIX;
+#endif
+
+#define ZEROMAT(x, n, m) { x.resize(n, m); x = 0;}
+#define ZEROVEC(x, n) { x.resize(n); x = 0;}
+
+#else // linux ...
+#if USE_COMPLEX
+typedef CVECTOR DCVECTOR;
+#include <Eigen/Dense>
+typedef Eigen::MatrixXcd DCMATRIX;
+#define ZEROMAT(x, n, m)     x.setConstant(0)
+#define ZEROVEC(x, n)     x.setConstant(0) //???
+#else
+#include <Eigen/Dense>
+typedef VECTOR DCVECTOR;
+typedef Eigen::MatrixXd DCMATRIX;
+#define ZEROMAT(x, n, m) x.setConstant(0)
+#define ZEROVEC(x, n) { x.resize(n); x = 0;}
+#endif
+#endif
+
+#endif
+
 // 	This is the LU decomposition and solve implementation that we used
 // 	with TNT.  I's put here so people don't need to use CLAPACK to run
 // 	the code.
@@ -411,52 +458,3 @@ int LUsolve(rMAT<T> &K, rVEC<T> &F)
 	K = LU_;
 	return issingular;
 } // end TNT version of LUsolve with 1D F
-
-
-
-#if USE_BLITZ
-#include "blitz/array.h"
-typedef blitz::array<double, 1> VECTOR;
-typedef blitz::array<Dcomplex, 1> CVECTOR;
-typedef blitz::array<double, 2> MATRIX;
-#else
-typedef rVEC<double> VECTOR;
-typedef rVEC<Dcomplex> CVECTOR;
-typedef rMAT<double> MATRIX;
-#endif
-
-#if VCPP
-#if USE_BLITZ
-typedef blitz::array<Dcomplex, 2> CMATRIX;
-#else
-typedef rMAT<Dcomplex> CMATRIX;
-#endif
-
-#if USE_COMPLEX
-typedef CVECTOR DCVECTOR;
-typedef CMATRIX DCMATRIX;
-#else
-typedef VECTOR DCVECTOR;
-typedef MATRIX DCMATRIX;
-#endif
-
-#define ZEROMAT(x, n, m) { x.resize(n, m); x = 0;}
-#define ZEROVEC(x, n) { x.resize(n); x = 0;}
-
-#else // linux ...
-#if USE_COMPLEX
-typedef CVECTOR DCVECTOR;
-#include <Eigen/Dense>
-typedef Eigen::MatrixXcd DCMATRIX;
-#define ZEROMAT(x, n, m)     x.setConstant(0)
-#define ZEROVEC(x, n)     x.setConstant(0) //???
-#else
-#include <Eigen/Dense>
-typedef DVECTOR DCVECTOR;
-typedef Eigen::MatrixXd DCMATRIX;
-#define ZEROMAT(x, n, m) x.setConstant(0)
-#define ZEROVEC(x, n) { x.resize(n); x = 0;}
-#endif
-#endif
-
-#endif
