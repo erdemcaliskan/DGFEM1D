@@ -336,7 +336,7 @@ typedef CVECTOR DCVECTOR;
 #include <Eigen/Dense>
 typedef Eigen::MatrixXcd DCMATRIX;
 #define ZEROMAT(x, n, m)     x.setConstant(0)
-#define ZEROVEC(x, n)     x.setConstant(0) //???
+#define ZEROVEC(x, n) { x.resize(n); x = 0;}  //???
 #else
 #include <Eigen/Dense>
 typedef VECTOR DCVECTOR;
