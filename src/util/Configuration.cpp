@@ -1459,6 +1459,7 @@ void Configuration::Compute_StaticKaFSystem()
 		return;
 	double valLeft, valRight;
 	Compute_left_right_prescribedVals(0.0, valLeft, valRight);
+	globalF.resize(nfdof_domain);
 	ZEROVEC(globalF, nfdof_domain);
 
 	// Dirichlet, Neumann BCs
@@ -1468,6 +1469,8 @@ void Configuration::Compute_StaticKaFSystem()
 		for (unsigned int dbci = 0; dbci < num_DirichletBCs; ++dbci)
 		{
 			DCVECTOR interfaceF;
+			interfaceF.resize(ndof_element);
+			ZEROVEC(interfaceF, ndof_element);
 			bool leftDomainInterface = (dbci == 0);
 			double wBar = valRight;
 			if (leftDomainInterface)
@@ -1512,6 +1515,11 @@ void Configuration::Compute_StaticKaFSystem()
 	LUsolve(globalK_cpy, global_a);
 #else
     // eigen-based Ka = F --- you may need to have 3 versions of DCVECTOR 1 VCPP, 2 otherwise
+
+	// 1. Eigen-based Ka = F
+	ZEROVEC(global_a, nfdof_domain);
+	global_a = globalK.fullPivLu().solve(globalF);
+
 #endif
 }
 

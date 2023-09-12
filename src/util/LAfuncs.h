@@ -339,10 +339,10 @@ typedef Eigen::MatrixXcd DCMATRIX;
 #define ZEROVEC(x, n) { x.resize(n); x = 0;}  //???
 #else
 #include <Eigen/Dense>
-typedef VECTOR DCVECTOR;
+typedef Eigen::VectorXd DCVECTOR;
 typedef Eigen::MatrixXd DCMATRIX;
 #define ZEROMAT(x, n, m) x.setConstant(0)
-#define ZEROVEC(x, n) { x.resize(n); x = 0;}
+#define ZEROVEC(x, n) x.setConstant(0)
 #endif
 #endif
 
